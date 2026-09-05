@@ -104,7 +104,8 @@ void JandyAqualink::task_loop() {
         portEXIT_CRITICAL(&mux_);
 
         if (sent_key >= 0) {
-          ESP_LOGW(TAG, "SENT KEY 0x%02X in ACK (%u bytes, reply %u us)", sent_key,
+          ESP_LOGW(TAG, "SENT KEY 0x%02X in ACK (%u bytes, reply %u us)",
+                   static_cast<unsigned>(sent_key),
                    static_cast<unsigned>(ack_len), dt);
         }
         observe_frame(f);  // after the reply, never delays it
@@ -347,13 +348,14 @@ void JandyAqualink::arm_aux_key_(uint8_t key, const char *name) {
     return;
   }
   if (!jandy::is_direct_aux_key(key)) {
-    ESP_LOGE(TAG, "%s REFUSED: key 0x%02X is not an approved AUX key", name, key);
+    ESP_LOGE(TAG, "%s REFUSED: key 0x%02X is not an approved AUX key", name,
+             static_cast<unsigned>(key));
     return;
   }
   portENTER_CRITICAL(&mux_);
   armed_key_ = key;
   portEXIT_CRITICAL(&mux_);
-  ESP_LOGW(TAG, "%s: armed direct AllButton key 0x%02X", name, key);
+  ESP_LOGW(TAG, "%s: armed direct AllButton key 0x%02X", name, static_cast<unsigned>(key));
 }
 
 void JandyAqualink::press_aux2() { arm_aux_key_(jandy::KEY_AUX2, "AUX2"); }
