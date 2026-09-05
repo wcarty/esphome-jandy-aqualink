@@ -178,6 +178,23 @@ switch:
       - lambda: "id(jandy_comp).set_scheduler_armed(false);"
 
 button:
+  # Remote reboot. NOT PRESENT ON THE DEVICE AS OF 2026-09-05, which is why the
+  # only recovery from the long-uptime wedge is a physical trip to the pad.
+  #
+  # The wedge: after about 35 days the bridge stops accepting NEW API
+  # connections while its existing one keeps working. Nothing looks wrong until
+  # something drops that connection, and then neither Home Assistant nor
+  # esphome logs can reconnect (EncryptionHelloAPIError, "connection dropped
+  # immediately after encrypted hello"). The api reboot_timeout, 15 min by
+  # default, does NOT catch it. See automation "Pool: Bridge Uptime High".
+  #
+  # entity_category diagnostic keeps it out of the main dashboard so nobody
+  # reboots the pool controller by fat-fingering a card.
+  - platform: restart
+    name: "Restart Bridge"
+    icon: "mdi:restart"
+    entity_category: diagnostic
+
   - platform: template
     name: "Pool Keypad Press MENU"
     icon: "mdi:menu"
