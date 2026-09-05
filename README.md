@@ -37,9 +37,20 @@ the other.
 
 ### 1. Gather hardware
 
-- ✅ An ESP32—tested with an **M5Stack Atom Lite**
-- ✅ An RS485 transceiver—tested with the **M5Stack ATOM RS485 base**
-- ✅ Access to the panel's RS485 A, B, and ground terminals
+| Hardware | Tested model | Role |
+| --- | --- | --- |
+| 🧠 ESP32 controller | [**M5Stack Atom Lite**](https://docs.m5stack.com/en/core/ATOM%20Lite) | Runs ESPHome and the RS485 protocol task |
+| 🔌 RS485 interface | [**M5Stack ATOM RS485 Base**](https://docs.m5stack.com/en/base/atom_rs485) | Connects the Atom Lite to the AquaLink bus |
+| 🏊 Pool controller | Jandy AquaLink RS panel | Provides RS485 A, B, and ground terminals |
+
+```text
+┌──────────────────────┐      ┌────────────────────────┐      ┌─────────────────────┐
+│  M5Stack Atom Lite   │──────│  M5Stack ATOM RS485     │──────│  Jandy AquaLink RS  │
+│  ESP32 + ESPHome     │      │  Base (SP3485)          │      │  RS485 A / B / GND  │
+└──────────────────────┘      └────────────────────────┘      └─────────────────────┘
+         GPIO19 TX                       RS485 bus
+         GPIO22 RX
+```
 
 The tested ATOM RS485 base uses automatic direction control. Defaults are
 **GPIO19 TX**, **GPIO22 RX**, **9600 baud**, 8N1.
