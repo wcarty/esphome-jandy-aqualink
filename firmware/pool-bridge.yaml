@@ -339,6 +339,23 @@ switch:
     web_server:
       sorting_group_id: pool_automation
 
+  # AUX6 is a latching relay for the Stenner. The panel does not expose its
+  # state in a frame decoded by this bridge, so this shows the last state
+  # commanded here. DISABLED prevents the switch from sending a relay toggle
+  # when the bridge boots.
+  - platform: template
+    name: "Pool Stenner Dosing Pump"
+    id: stenner_dosing_pump
+    icon: "mdi:pump"
+    optimistic: true
+    restore_mode: DISABLED
+    turn_on_action:
+      - lambda: "id(jandy_comp).press_aux6();"
+    turn_off_action:
+      - lambda: "id(jandy_comp).press_aux6();"
+    web_server:
+      sorting_group_id: pool_automation
+
 button:
   # Remote reboot. NOT PRESENT ON THE DEVICE AS OF 2026-09-05, which is why the
   # only recovery from the long-uptime wedge is a physical trip to the pad.
@@ -392,14 +409,6 @@ button:
       sorting_group_id: pool_automation
     on_press:
       - lambda: "id(jandy_comp).press_aux2();"
-  - platform: template
-    name: "Pool Stenner Dosing Pump"
-    icon: "mdi:pump"
-    web_server:
-      sorting_group_id: pool_automation
-    on_press:
-      - lambda: "id(jandy_comp).press_aux6();"
-
   # These circuits do not expose reliable state feedback, so they remain
   # one-shot controls instead of showing a potentially incorrect ON/OFF state.
   - platform: template
