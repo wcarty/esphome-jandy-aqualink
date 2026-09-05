@@ -47,8 +47,8 @@ This drives live equipment, so writes are conservative by construction:
   emulator (AqualinkD, aquaweb) on the same address concurrently.
 
 The control surface is the **encrypted Home Assistant native API** plus OTA. The
-ESPHome `web_server` is intentionally left disabled, because it would otherwise be an
-unauthenticated control endpoint on the local network.
+example configuration also enables ESPHome's local web interface with required,
+secret-backed authentication.
 
 ## Why this is interesting
 
@@ -108,7 +108,9 @@ jandy_aqualink:
    operate equipment.
 
 The example config creates every supported entity and is the best starting point
-for a complete installation.
+for a complete installation. Add `pool_bridge_web_username` and
+`pool_bridge_web_password` to your ESPHome `secrets.yaml` before compiling; they
+protect the local web interface.
 
 ## Picking a keypad address
 

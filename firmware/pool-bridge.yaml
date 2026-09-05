@@ -43,6 +43,15 @@ logger:
   baud_rate: 0  # no serial logger; logs stream to the dashboard over the network
   task_log_buffer_size: 4096  # the core-1 task logs a multi-line bus census in bursts
 
+# Local device UI for monitoring and control when Home Assistant is unavailable.
+# Add both values to secrets.yaml. Authentication is mandatory because this page
+# can operate pool equipment once the master interlock is enabled.
+web_server:
+  version: 3
+  auth:
+    username: !secret pool_bridge_web_username
+    password: !secret pool_bridge_web_password
+
 external_components:
   # This private repository is the component source. refresh: 0s fetches the
   # latest version on each compile.
@@ -506,9 +515,3 @@ sensor:
 binary_sensor:
   - platform: status
     name: Pool Bridge Status
-
-# web_server is intentionally DISABLED for security (2026-06-04 audit): it served an
-# UNAUTHENTICATED control page on port 80, so anything on the LAN could actuate equipment
-# (including arming the interlock, then heaters / valves). Home Assistant controls the box
-# over the ENCRYPTED native API (port 6053) instead, so nothing functional is lost. If you
-# ever re-enable it, add an `auth:` block (username + password via !secret).
