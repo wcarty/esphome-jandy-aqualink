@@ -107,7 +107,7 @@ authenticated dashboard. The master interlock remains off after every restart.
 | **iAqualink page confirmation** | Page-scoped commands cannot be sent from the wrong screen. |
 | **State-aware switches** | Confirmed circuits only press the panel when their requested state differs. |
 | **One write sequence at a time** | Multi-step pump, heater, and chlorinator writes cannot overlap. |
-| **Narrow scheduler permission** | Automation may operate only filter pump, cleaner, and pump speed. |
+| **Narrow scheduler permission** | When manually armed, automation may operate only filter pump, cleaner, and pump speed. It also boots OFF. |
 | **Local authenticated web UI** | Dashboard access requires secret-backed credentials. |
 
 > [!IMPORTANT]
@@ -115,6 +115,11 @@ authenticated dashboard. The master interlock remains off after every restart.
 > switches because AUX2/AUX6 feedback is not decoded yet. They never toggle on
 > boot, but their displayed state means “last command sent by this bridge,” not
 > necessarily the relay's state after manual panel use.
+
+> [!NOTE]
+> The master interlock gates every equipment write except the separately armed
+> **Pool Scheduler**. That permission is limited in firmware to filter pump,
+> cleaner, and pump-speed writes, and is OFF after every restart.
 
 ## 🎚️ Controls and monitoring
 

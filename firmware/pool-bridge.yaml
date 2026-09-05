@@ -256,13 +256,13 @@ switch:
   # Scheduler permission: when on, the autonomous HA pool brain may set pump speed
   # and toggle Filter Pump (0x11) / Cleaner (0x15) WITHOUT the master interlock.
   # Scoped to exactly those writes in firmware (is_scheduler_safe_key); every other
-  # write still needs the interlock. Restores across reboots so the brain self-resumes.
+  # write still needs the interlock. It boots OFF, preserving a monitor-only start.
   - platform: template
     name: "Pool Scheduler"
     id: scheduler_armed
     icon: "mdi:robot"
     optimistic: true
-    restore_mode: RESTORE_DEFAULT_OFF
+    restore_mode: ALWAYS_OFF
     web_server:
       sorting_group_id: pool_automation
     turn_on_action:
