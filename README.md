@@ -148,6 +148,9 @@ notes.
 
 ## Credits
 
+This repository is based on and continues the work in the original
+[ESPHome Jandy AquaLink repository](https://github.com/4pBdhJoZ3Xy3reVvBoU9C3YPzyXDDU/esphome-jandy-aqualink).
+
 Protocol understanding stands on the shoulders of
 [AqualinkD](https://github.com/sfeakes/AqualinkD) and
 [aquaweb](https://github.com/earlephilhower/aquaweb). This is an independent
