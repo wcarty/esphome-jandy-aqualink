@@ -153,7 +153,8 @@ It must also be unused by another live iAqualink controller.
 The local dashboard is organized into **Pool Overview**, **Water Chemistry**,
 **Equipment Status**, **Automation & Controls**, and **Diagnostics**. It is
 designed for a trusted local network only; ESPHome's web server is HTTP, not
-HTTPS.
+HTTPS. Use the **Light/Dark** control in the dashboard header to select and
+persist a comfortable display theme.
 
 Add these secrets before compiling:
 
