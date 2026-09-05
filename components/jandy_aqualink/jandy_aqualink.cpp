@@ -7,6 +7,7 @@
 
 #include <cstdio>   // snprintf
 #include <cstring>  // strcmp
+#include <inttypes.h>
 
 namespace esphome {
 namespace jandy_aqualink {
@@ -104,7 +105,7 @@ void JandyAqualink::task_loop() {
         portEXIT_CRITICAL(&mux_);
 
         if (sent_key >= 0) {
-          ESP_LOGW(TAG, "SENT KEY 0x%02X in ACK (%u bytes, reply %u us)",
+          ESP_LOGW(TAG, "SENT KEY 0x%02X in ACK (%u bytes, reply %" PRIu32 " us)",
                    static_cast<unsigned>(sent_key),
                    static_cast<unsigned>(ack_len), dt);
         }
@@ -328,18 +329,19 @@ void JandyAqualink::set_interlock(bool on) {
 
 void JandyAqualink::arm_key(uint8_t key) {
   if (!interlock_) {
-    ESP_LOGW(TAG, "keypress REFUSED: safety interlock is OFF (key=0x%02X)", key);
+    ESP_LOGW(TAG, "keypress REFUSED: safety interlock is OFF (key=0x%02X)",
+             static_cast<unsigned>(key));
     return;
   }
   if (!jandy::is_safe_nav_key(key)) {
-    ESP_LOGW(TAG, "keypress REFUSED: key 0x%02X is not a display-only nav key", key);
+    ESP_LOGW(TAG, "keypress REFUSED: key 0x%02X is not a display-only nav key",
+             static_cast<unsigned>(key));
     return;
   }
   portENTER_CRITICAL(&mux_);
   armed_key_ = key;
   portEXIT_CRITICAL(&mux_);
-  ESP_LOGW(TAG, "ARMED key 0x%02X -> sends ACK %02X %02X %02X %02X %02X %02X %02X %02X %02X on next poll",
-           key, ack[0], ack[1], ack[2], ack[3], ack[4], ack[5], ack[6], ack[7], ack[8]);
+  ESP_LOGW(TAG, "ARMED key 0x%02X for next poll", static_cast<unsigned>(key));
 }
 
 void JandyAqualink::arm_aux_key_(uint8_t key, const char *name) {
@@ -1247,8 +1249,10 @@ void JandyAqualink::loop() {
   uint32_t now = millis();
   if (now - last_log_ms_ >= 10000) {
     last_log_ms_ = now;
-    ESP_LOGI(TAG, "frames=%u polls_answered=%u iaq_acks=%u checksum_errors=%u reply_us=%u", frames,
-             polls, iaq, errors, latency);
+    ESP_LOGI(TAG,
+             "frames=%" PRIu32 " polls_answered=%" PRIu32 " iaq_acks=%" PRIu32
+             " checksum_errors=%" PRIu32 " reply_us=%" PRIu32,
+             frames, polls, iaq, errors, latency);
   }
 }
 
