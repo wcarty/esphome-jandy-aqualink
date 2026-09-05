@@ -133,6 +133,23 @@ const char *swg_status_name(uint8_t status) {
   }
 }
 
+void ChemistryReader::feed(const Frame &f) {
+  if (f.cmd() != 0x21 || f.data_len() < 2) return;
+  // TrueSense emits a compact tag/value sequence. Ignore unknown tags and
+  // reject implausible values so unrelated 0x21 traffic cannot update sensors.
+  for (size_t i = 0; i + 1 < f.data_len(); i += 2) {
+    uint8_t tag = f.data()[i];
+    uint8_t value = f.data()[i + 1];
+    if (tag == 0x02 && value >= 20 && value <= 120) {
+      state.orp = value * 10;
+      state.has_orp = true;
+    } else if (tag == 0x03 && value >= 50 && value <= 100) {
+      state.ph = value / 10.0f;
+      state.has_ph = true;
+    }
+  }
+}
+
 // --- display helpers (mirror jandy/display.py) ---
 
 static int label_key(const std::string &text) {
@@ -730,6 +747,19 @@ bool selftest(std::string &detail) {
         std::strcmp(swg_status_name(swg.state.status), "on") == 0)
       ok++;
     else detail += " SWG";
+  }
+
+  // TrueSense/ChemLink chemistry: tag 0x02 = 650 mV ORP, tag 0x03 = pH 7.5.
+  {
+    total++;
+    Frame f;
+    f.raw = {0x10,0x02,0x00,0x21,0x02,0x41,0x03,0x4B,0x08,0x00,0x18,0x01,0xE5,0x10,0x03};
+    ChemistryReader chemistry;
+    chemistry.feed(f);
+    if (chemistry.state.has_orp && chemistry.state.orp == 650 &&
+        chemistry.state.has_ph && chemistry.state.ph == 7.5f)
+      ok++;
+    else detail += " CHEM";
   }
 
   detail = std::to_string(ok) + "/" + std::to_string(total);

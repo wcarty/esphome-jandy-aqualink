@@ -256,6 +256,20 @@ class SwgReader {
 
 const char *swg_status_name(uint8_t status);
 
+// Passive Jandy TrueSense/ChemLink chemistry frame decoder. CMD 0x21 carries
+// tag/value pairs: 0x02 = ORP in 10 mV units and 0x03 = pH in tenths.
+struct ChemistryStatus {
+  bool has_ph = false, has_orp = false;
+  float ph = 0.0f;
+  int orp = 0;
+};
+
+class ChemistryReader {
+ public:
+  void feed(const Frame &f);
+  ChemistryStatus state;
+};
+
 // Pairs keypad display labels with the value line that immediately follows, and
 // decodes the binary pool-temp status frame. Feed it checksum-valid frames.
 class Reader {

@@ -43,6 +43,8 @@ MENU 0x0f, ONETOUCH 0x4d, COLOR_LIGHT 0x48. These were not walked this session.
 | AquaPure output | Passive command to SWG address `0x50`-`0x53`; SET_SWG value path | percent | read and set |
 | Salt level | Passive AquaPure poll reply | ppm | supported |
 | AquaPure status | Passive AquaPure poll reply | on / fault text | supported |
+| TrueSense pH | Passive chemistry frame tag `0x03` | pH | supported |
+| TrueSense ORP | Passive chemistry frame tag `0x02` | mV | supported |
 
 Notes:
 - Pump RPM/watts are NOT on the bus passively. The panel sends the pump (address

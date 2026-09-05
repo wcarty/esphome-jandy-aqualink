@@ -11,7 +11,7 @@ from collections import Counter
 
 from .frames import FrameExtractor
 from .display import DisplayReader
-from .status import decode_status, SwgReader
+from .status import decode_status, decode_chemistry, SwgReader
 
 
 class PoolDecoder:
@@ -41,5 +41,6 @@ class PoolDecoder:
             self._swg.feed(frame)
             self.state.update(self._display.readings)
             self.state.update(decode_status(frame))
+            self.state.update(decode_chemistry(frame))
             self.state.update(self._swg.state)
         return frames

@@ -58,6 +58,12 @@ class TestPoolDecoder(unittest.TestCase):
         self.assertEqual(d.state["salt_level"], 5600)
         self.assertTrue(d.state["salt_chlorinator_generating"])
 
+    def test_decodes_truesense_chemistry(self):
+        d = PoolDecoder()
+        d.feed(fx.CHEMISTRY_PH_ORP)
+        self.assertEqual(d.state["ph"], 7.5)
+        self.assertEqual(d.state["orp"], 650)
+
 
 if __name__ == "__main__":
     unittest.main()

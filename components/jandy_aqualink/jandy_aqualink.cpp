@@ -1131,12 +1131,20 @@ void JandyAqualink::log_iaq_frame(const jandy::Frame &f) {
 void JandyAqualink::observe_frame(const jandy::Frame &f) {
   reader_.feed(f);
   swg_reader_.feed(f);
+  chemistry_reader_.feed(f);
   const auto &swg = swg_reader_.state;
   if (swg.has_percent || swg.has_ppm || swg.has_status) {
     portENTER_CRITICAL(&mux_);
     if (swg.has_percent) swg_percent_ = swg.percent;
     if (swg.has_ppm) swg_ppm_ = swg.ppm;
     if (swg.has_status) swg_status_ = swg.status;
+    portEXIT_CRITICAL(&mux_);
+  }
+  const auto &chemistry = chemistry_reader_.state;
+  if (chemistry.has_ph || chemistry.has_orp) {
+    portENTER_CRITICAL(&mux_);
+    if (chemistry.has_ph) ph_ = chemistry.ph;
+    if (chemistry.has_orp) orp_ = chemistry.orp;
     portEXIT_CRITICAL(&mux_);
   }
 
@@ -1276,7 +1284,8 @@ void JandyAqualink::dump_observations() {
 
 void JandyAqualink::loop() {
   uint32_t polls, errors, latency, frames, iaq;
-  int air, pool, spa, rpm, watts, swg_ppm, swg_percent, swg_status;
+  int air, pool, spa, rpm, watts, swg_ppm, swg_percent, swg_status, orp;
+  float ph;
   portENTER_CRITICAL(&mux_);
   polls = acks_sent_;
   errors = bad_cksum_;
@@ -1291,6 +1300,8 @@ void JandyAqualink::loop() {
   swg_ppm = swg_ppm_;
   swg_percent = swg_percent_;
   swg_status = swg_status_;
+  ph = ph_;
+  orp = orp_;
   portEXIT_CRITICAL(&mux_);
 
   if (air_temp_sensor_ && air != -999 && air != pub_air_) {
@@ -1336,6 +1347,14 @@ void JandyAqualink::loop() {
     if (generating != pub_swg_generating_) {
       salt_chlorinator_generating_bs_->publish_state(generating != 0);
       pub_swg_generating_ = generating;
+    }
+    if (ph_sensor_ && ph >= 0.0f && ph != pub_ph_) {
+      ph_sensor_->publish_state(ph);
+      pub_ph_ = ph;
+    }
+    if (orp_sensor_ && orp >= 0 && orp != pub_orp_) {
+      orp_sensor_->publish_state(orp);
+      pub_orp_ = orp;
     }
   }
 

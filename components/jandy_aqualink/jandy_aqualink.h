@@ -39,6 +39,8 @@ class JandyAqualink : public Component {
   void set_pump_watts_sensor(sensor::Sensor *s) { pump_watts_sensor_ = s; }
   void set_salt_level_sensor(sensor::Sensor *s) { salt_level_sensor_ = s; }
   void set_salt_chlorinator_output_sensor(sensor::Sensor *s) { salt_chlorinator_output_sensor_ = s; }
+  void set_ph_sensor(sensor::Sensor *s) { ph_sensor_ = s; }
+  void set_orp_sensor(sensor::Sensor *s) { orp_sensor_ = s; }
   void set_salt_chlorinator_status_ts(text_sensor::TextSensor *s) { salt_chlorinator_status_ts_ = s; }
   void set_salt_chlorinator_generating_bs(binary_sensor::BinarySensor *b) { salt_chlorinator_generating_bs_ = b; }
   void set_spa_mode_bs(binary_sensor::BinarySensor *b) { spa_mode_bs_ = b; }
@@ -168,6 +170,8 @@ class JandyAqualink : public Component {
   sensor::Sensor *pump_watts_sensor_{nullptr};
   sensor::Sensor *salt_level_sensor_{nullptr};
   sensor::Sensor *salt_chlorinator_output_sensor_{nullptr};
+  sensor::Sensor *ph_sensor_{nullptr};
+  sensor::Sensor *orp_sensor_{nullptr};
   text_sensor::TextSensor *salt_chlorinator_status_ts_{nullptr};
   binary_sensor::BinarySensor *salt_chlorinator_generating_bs_{nullptr};
   binary_sensor::BinarySensor *spa_mode_bs_{nullptr};
@@ -216,10 +220,14 @@ class JandyAqualink : public Component {
   volatile int t_air_{-999}, t_pool_{-999}, t_spa_{-999};
   volatile int iaq_rpm_{-1}, iaq_watts_{-1};   // pump readings from the STATUS page
   volatile int swg_ppm_{-1}, swg_percent_{-1}, swg_status_{-1};
+  volatile float ph_{-1.0f};
+  volatile int orp_{-1};
   volatile bool iaq_return_home_{false};       // after a STATUS read, return to HOME
   int pub_air_{-1000}, pub_pool_{-1000}, pub_spa_{-1000};
   int pub_rpm_{-1000}, pub_watts_{-1000};
   int pub_swg_ppm_{-1000}, pub_swg_percent_{-1000}, pub_swg_status_{-1000}, pub_swg_generating_{-1};
+  float pub_ph_{-1.0f};
+  int pub_orp_{-1};
 
   // iAqualink one-shot keypress: -1 none, else the keycode to send in the next
   // ACK to 0x33. iaq_water_mode_ mirrors the decoder's current mode to core 0.
@@ -280,6 +288,7 @@ class JandyAqualink : public Component {
   // log to first-seen and changes.
   jandy::Reader reader_;
   jandy::SwgReader swg_reader_;
+  jandy::ChemistryReader chemistry_reader_;
   struct CensusEntry {
     uint16_t key;                 // (dest << 8) | cmd
     std::vector<uint8_t> sample;  // first raw frame seen of this type

@@ -92,6 +92,12 @@ jandy_aqualink:
     name: Pool Chlorinator Status
   salt_chlorinator_generating:
     name: Pool Chlorinator Generating
+  # Jandy TrueSense chemistry readings, passively decoded from its normal
+  # RS485 chemistry frames. No chemistry-control command is sent.
+  ph:
+    name: Pool pH
+  orp:
+    name: Pool ORP
   # Equipment on/off decoded from the panel's keypad status bitmap (the inert
   # AllButton seat, address 0x08). Read-only; updates continuously as the panel
   # changes equipment. Bit positions pinned live 2026-06-01 (see docs/).

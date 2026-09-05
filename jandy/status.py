@@ -44,6 +44,7 @@ SWG_DEVICE_MIN = 0x50
 SWG_DEVICE_MAX = 0x53
 SWG_CMD_PERCENT = 0x11
 SWG_CMD_PPM = 0x16
+CHEMISTRY_CMD = 0x21
 
 SWG_STATUSES = {
     0x00: "on",
@@ -87,6 +88,21 @@ class SwgReader:
         self.state["salt_chlorinator_generating"] = (
             status == 0x00 and self.state.get("salt_chlorinator_output", 0) > 0
         )
+
+
+def decode_chemistry(frame: Frame) -> dict:
+    """Decode Jandy TrueSense/ChemLink pH and ORP tag/value pairs."""
+    if frame.cmd != CHEMISTRY_CMD:
+        return {}
+    out = {}
+    data = frame.data
+    for index in range(0, len(data) - 1, 2):
+        tag, value = data[index], data[index + 1]
+        if tag == 0x02 and 20 <= value <= 120:
+            out["orp"] = value * 10
+        elif tag == 0x03 and 50 <= value <= 100:
+            out["ph"] = value / 10
+    return out
 
 # circuit name -> (data byte index, ON-bit index within that byte)
 CIRCUIT_BITS = {

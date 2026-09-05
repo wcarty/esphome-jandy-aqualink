@@ -10,7 +10,7 @@ so it is intentionally not decoded here until a real frame is captured.
 import unittest
 
 from jandy.frames import FrameExtractor, Frame
-from jandy.status import decode_status, decode_keypad_status, SwgReader
+from jandy.status import decode_chemistry, decode_status, decode_keypad_status, SwgReader
 from tests import fixtures as fx
 
 
@@ -85,6 +85,11 @@ class TestSwgReader(unittest.TestCase):
             reader.feed(frame(raw))
         self.assertEqual(reader.state["salt_chlorinator_status"], "no_flow")
         self.assertFalse(reader.state["salt_chlorinator_generating"])
+
+
+class TestChemistry(unittest.TestCase):
+    def test_decodes_truesense_ph_and_orp(self):
+        self.assertEqual(decode_chemistry(frame(fx.CHEMISTRY_PH_ORP)), {"orp": 650, "ph": 7.5})
 
 
 if __name__ == "__main__":

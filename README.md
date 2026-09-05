@@ -22,7 +22,7 @@ pump on the same bus, on an M5Stack Atom Lite (about $20 of hardware).
 
 | Area | Available in Home Assistant |
 | --- | --- |
-| Monitoring | Pool, spa, and air temperature; equipment state; pump RPM and watts; AquaPure output, salt level, and faults |
+| Monitoring | Pool, spa, and air temperature; equipment state; pump RPM and watts; AquaPure output, salt level, and faults; TrueSense pH and ORP |
 | Everyday control | Filter pump, cleaner, lights, blower, pool/spa mode, AUX2 color wheel, and AUX6 Stenner dosing pump |
 | Advanced control | Pump RPM presets or slider; pool and spa heater enable and setpoints; AquaPure pool output |
 | Safety | Master interlock off after every restart; iAqualink presence and page checks protect iAqualink writes |

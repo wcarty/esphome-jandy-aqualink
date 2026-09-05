@@ -36,6 +36,8 @@ SWG_PERCENT_85 = h("10 02 50 11 55 C8 10 03")
 POLL_SWG = h("10 02 50 00 62 10 03")
 SWG_PPM_ON = h("10 02 00 16 38 00 60 10 03")
 SWG_PPM_NO_FLOW = h("10 02 00 16 38 01 61 10 03")
+# TrueSense/ChemLink chemistry tags: 0x02 ORP 650 mV, 0x03 pH 7.5.
+CHEMISTRY_PH_ORP = h("10 02 00 21 02 41 03 4B 08 00 18 01 E5 10 03")
 
 # Keypad equipment-LED status (dest 0x08, cmd 0x02): the de-stuffed LOGICAL frame
 # as the device stores it in Frame.raw. Captured live 2026-06-01 in Service mode

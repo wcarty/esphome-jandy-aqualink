@@ -29,6 +29,8 @@ CONF_SALT_LEVEL = "salt_level"
 CONF_SALT_CHLORINATOR_OUTPUT = "salt_chlorinator_output"
 CONF_SALT_CHLORINATOR_STATUS = "salt_chlorinator_status"
 CONF_SALT_CHLORINATOR_GENERATING = "salt_chlorinator_generating"
+CONF_PH = "ph"
+CONF_ORP = "orp"
 CONF_SPA_MODE = "spa_mode"
 CONF_AIR_BLOWER = "air_blower"
 CONF_FILTER_PUMP_STATE = "filter_pump_state"
@@ -105,6 +107,17 @@ CONFIG_SCHEMA = cv.Schema(
         cv.Optional(CONF_SALT_CHLORINATOR_GENERATING): binary_sensor.binary_sensor_schema(
             icon="mdi:water-check",
         ),
+        cv.Optional(CONF_PH): sensor.sensor_schema(
+            accuracy_decimals=1,
+            state_class=STATE_CLASS_MEASUREMENT,
+            icon="mdi:ph",
+        ),
+        cv.Optional(CONF_ORP): sensor.sensor_schema(
+            unit_of_measurement="mV",
+            accuracy_decimals=0,
+            state_class=STATE_CLASS_MEASUREMENT,
+            icon="mdi:flash",
+        ),
         cv.Optional(CONF_SPA_MODE): binary_sensor.binary_sensor_schema(
             icon="mdi:hot-tub",
         ),
@@ -174,6 +187,12 @@ async def to_code(config):
     if CONF_SALT_CHLORINATOR_GENERATING in config:
         b = await binary_sensor.new_binary_sensor(config[CONF_SALT_CHLORINATOR_GENERATING])
         cg.add(var.set_salt_chlorinator_generating_bs(b))
+    if CONF_PH in config:
+        s = await sensor.new_sensor(config[CONF_PH])
+        cg.add(var.set_ph_sensor(s))
+    if CONF_ORP in config:
+        s = await sensor.new_sensor(config[CONF_ORP])
+        cg.add(var.set_orp_sensor(s))
     if CONF_SPA_MODE in config:
         b = await binary_sensor.new_binary_sensor(config[CONF_SPA_MODE])
         cg.add(var.set_spa_mode_bs(b))
