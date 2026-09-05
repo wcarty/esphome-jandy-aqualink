@@ -187,6 +187,29 @@ struct Frame {
   }
 };
 
+// Counts frames by (dest, cmd). Exists to answer one question without
+// eyeballing a log: does display text (CMD_DISPLAY) ever reach an AllButton
+// keypad address (0x08-0x0B), or only the iAqualink slot (0x33)? AqualinkD's
+// program reader is driven entirely by matching LCD text, so that answer
+// decides whether its read path can be ported here at all.
+//
+// Fixed-capacity and allocation-free so it is safe to feed from the frame
+// observation path. Mirrors jandy/census.py.
+struct BusCensus {
+  static const uint8_t MAX_ENTRIES = 64;
+  struct Entry {
+    uint8_t dest;
+    uint8_t cmd;
+    uint32_t count;
+  };
+  Entry entries[MAX_ENTRIES];
+  uint8_t used = 0;
+
+  void feed(uint8_t dest, uint8_t cmd);
+  uint32_t count(uint8_t dest, uint8_t cmd) const;
+  bool saw_display_at(uint8_t dest) const;
+};
+
 // Streaming extractor: feed bytes, get complete logical frames. State persists
 // across calls so a frame split across UART reads still assembles.
 class FrameExtractor {

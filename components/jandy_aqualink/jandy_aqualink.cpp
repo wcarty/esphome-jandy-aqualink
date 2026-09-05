@@ -956,8 +956,35 @@ void JandyAqualink::log_iaq_frame(const jandy::Frame &f) {
 // this panel actually broadcasts without sending any keys. This panel has no
 // LCD keypad, so it emits no CMD_MSG display text; the temperatures live in
 // binary broadcast frames instead.
+void JandyAqualink::set_census(bool on) {
+  if (on) {
+    // Zeroing `used` is a single byte write, so it is safe against the bus task
+    // appending concurrently. Reconstructing the whole struct would not be.
+    census_.used = 0;
+    census_on_ = true;
+    ESP_LOGI(TAG, "bus census STARTED (counters reset)");
+    return;
+  }
+  census_on_ = false;
+  ESP_LOGI(TAG, "bus census STOPPED");
+  ESP_LOGI(TAG, "census: display at 0x08 (AllButton) = %s",
+           census_.saw_display_at(0x08) ? "YES" : "no");
+  ESP_LOGI(TAG, "census: display at 0x33 (iAqualink) = %s",
+           census_.saw_display_at(0x33) ? "YES" : "no");
+  for (uint8_t i = 0; i < census_.used; i++) {
+    ESP_LOGI(TAG, "census: dest 0x%02X cmd 0x%02X count %u", census_.entries[i].dest,
+             census_.entries[i].cmd, (unsigned) census_.entries[i].count);
+  }
+}
+
 void JandyAqualink::observe_frame(const jandy::Frame &f) {
   reader_.feed(f);
+
+  // Read-only. Runs after the reply is already on the wire, so it cannot eat
+  // into the panel's 20-40 ms poll window.
+  if (census_on_) {
+    census_.feed(f.dest(), f.cmd());
+  }
 
   // Promiscuous bus capture: log every non-poll frame raw so we can record a real
   // iAqualink's schedule read/write conversation. Gated off by default (verbose).
