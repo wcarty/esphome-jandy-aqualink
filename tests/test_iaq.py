@@ -99,6 +99,26 @@ class TestIaqHomePage(unittest.TestCase):
     def test_water_mode_starts_unknown(self):
         self.assertEqual(IaqReader().water_mode, 0)
 
+    def test_decodes_pool_light_button_state(self):
+        r = IaqReader()
+        feed_frames(
+            r,
+            IAQ_PAGE_START_HOME,
+            fx.iaq_button_frame(6, 3),
+            IAQ_PAGE_END,
+        )
+        self.assertTrue(r.has_pool_light)
+        self.assertTrue(r.pool_light_on)
+
+        feed_frames(
+            r,
+            IAQ_PAGE_START_HOME,
+            fx.iaq_button_frame(6, 0),
+            IAQ_PAGE_END,
+        )
+        self.assertTrue(r.has_pool_light)
+        self.assertFalse(r.pool_light_on)
+
     def test_non_home_page_does_not_set_temps(self):
         r = IaqReader()
         # Page type 0x36 = DEVICES, not HOME.

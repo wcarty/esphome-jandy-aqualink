@@ -96,9 +96,11 @@ class JandyAqualink : public Component {
   bool filter_pump_on() const { return cs_pump_ == 1; }
   bool cleaner_on() const { return cs_cleaner_ == 1; }
   bool air_blower_on() const { return cs_blower_ == 1; }
+  bool pool_light_on() const { return home_pool_light_ == 1; }
   void set_filter_pump(bool on);
   void set_cleaner(bool on);
   void set_air_blower(bool on);
+  void set_pool_light(bool on);
 
   // Send one global navigation key on the iAqualink path to walk pages during a
   // read-only survey. Gated by the master interlock + iAqualink presence + the
@@ -197,7 +199,7 @@ class JandyAqualink : public Component {
   // by core 0. -1 = not yet known, 0 = off, 1 = on.
   volatile int8_t cs_spa_{-1}, cs_blower_{-1}, cs_pump_{-1}, cs_cleaner_{-1};
   int8_t pub_cs_spa_{-2}, pub_cs_blower_{-2}, pub_cs_pump_{-2}, pub_cs_cleaner_{-2};
-  volatile int8_t he_pool_{-1}, he_spa_{-1};
+  volatile int8_t he_pool_{-1}, he_spa_{-1}, home_pool_light_{-1};
   int8_t pub_he_pool_{-2}, pub_he_spa_{-2};
 
   TaskHandle_t task_{nullptr};

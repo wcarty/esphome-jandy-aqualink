@@ -312,6 +312,7 @@ void JandyAqualink::task_loop() {
         iaq_current_page_ = iaq_reader_.current_page();
         if (iaq_reader_.has_pool_heat()) he_pool_ = iaq_reader_.pool_heat_enabled() ? 1 : 0;
         if (iaq_reader_.has_spa_heat()) he_spa_ = iaq_reader_.spa_heat_enabled() ? 1 : 0;
+        if (iaq_reader_.has_pool_light()) home_pool_light_ = iaq_reader_.pool_light_on() ? 1 : 0;
         // After a requested STATUS read completes (page end on the status page),
         // arm HOME so the panel resumes pushing temperatures.
         if (iaq_return_home_ && f.cmd() == 0x28 &&
@@ -448,6 +449,10 @@ void JandyAqualink::set_cleaner(bool on) {
 
 void JandyAqualink::set_air_blower(bool on) {
   set_tracked_toggle_(on, cs_blower_, jandy::KEY_IAQ_AIR_BLOWER, "Air Blower");
+}
+
+void JandyAqualink::set_pool_light(bool on) {
+  set_tracked_toggle_(on, home_pool_light_, jandy::KEY_IAQ_POOL_LIGHT, "Pool Light");
 }
 
 void JandyAqualink::iaq_nav(uint8_t key) {

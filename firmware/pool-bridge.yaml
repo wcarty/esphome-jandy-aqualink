@@ -356,6 +356,33 @@ switch:
     web_server:
       sorting_group_id: pool_automation
 
+  # AUX2 changes the color wheel circuit but its relay state is not decoded.
+  # This command-state switch is boot-inert, like the Stenner switch above.
+  - platform: template
+    name: "Pool Color Wheel"
+    id: pool_color_wheel
+    icon: "mdi:palette"
+    optimistic: true
+    restore_mode: DISABLED
+    turn_on_action:
+      - lambda: "id(jandy_comp).press_aux2();"
+    turn_off_action:
+      - lambda: "id(jandy_comp).press_aux2();"
+    web_server:
+      sorting_group_id: pool_automation
+
+  - platform: template
+    name: "Pool Light"
+    id: pool_light_control
+    icon: "mdi:lightbulb"
+    lambda: "return id(jandy_comp).pool_light_on();"
+    turn_on_action:
+      - lambda: "id(jandy_comp).set_pool_light(true);"
+    turn_off_action:
+      - lambda: "id(jandy_comp).set_pool_light(false);"
+    web_server:
+      sorting_group_id: pool_automation
+
 button:
   # Remote reboot. NOT PRESENT ON THE DEVICE AS OF 2026-09-05, which is why the
   # only recovery from the long-uptime wedge is a physical trip to the pad.
@@ -402,22 +429,8 @@ button:
 
   # Direct AllButton circuit keys from AquaLinkD. Both require the same master
   # interlock as every other write; AUX6's DLE keycode is safely byte-stuffed.
-  - platform: template
-    name: "Pool Color Wheel"
-    icon: "mdi:palette"
-    web_server:
-      sorting_group_id: pool_automation
-    on_press:
-      - lambda: "id(jandy_comp).press_aux2();"
   # These circuits do not expose reliable state feedback, so they remain
   # one-shot controls instead of showing a potentially incorrect ON/OFF state.
-  - platform: template
-    name: "Pool Light"
-    icon: "mdi:lightbulb"
-    web_server:
-      sorting_group_id: pool_automation
-    on_press:
-      - lambda: "id(jandy_comp).iaq_press(0x17);"   # home button 6 = Pool Light
 
   # DEVICES-page toggles (gated by interlock + iAqualink presence + the
   # device-toggle allowlist; each navigates to DEVICES and confirms the page

@@ -318,6 +318,10 @@ void IaqReader::commit_home() {
     spa_heat_enabled_ = (btn_state_[BTN_SPA_HEAT] == 3);
     has_spa_heat_ = true;
   }
+  if (btn_present_[BTN_POOL_LIGHT]) {
+    pool_light_on_ = (btn_state_[BTN_POOL_LIGHT] == 3);
+    has_pool_light_ = true;
+  }
 }
 
 void IaqReader::commit_status() {
@@ -676,13 +680,15 @@ bool selftest(std::string &detail) {
               0x10, 0x03});
     feed_one({0x10, 0x02, 0x33, 0x25, 0x00, 0x38, 0x38, 0xC2, 0xBA, 0x00, 0x56, 0x10, 0x03});
     // Minimal HOME buttons (decode reads only data[0]=index, data[1]=state): Pool
-    // Heat (idx 2) enabled (state 3); Spa Heat (idx 3) off (state 0).
+    // Heat (idx 2) and Pool Light (idx 6) enabled (state 3); Spa Heat (idx 3) off.
     feed_one({0x10, 0x02, 0x33, 0x24, 0x02, 0x03, 0x00, 0x0B, 0x79, 0x10, 0x03});
     feed_one({0x10, 0x02, 0x33, 0x24, 0x03, 0x00, 0x00, 0x05, 0x71, 0x10, 0x03});
+    feed_one({0x10, 0x02, 0x33, 0x24, 0x06, 0x03, 0x00, 0x0B, 0x7D, 0x10, 0x03});
     feed_one({0x10, 0x02, 0x33, 0x28, 0x05, 0x1F, 0x1A, 0x08, 0x1D, 0xD0, 0x10, 0x03});
     if (ir.state.has_spa && ir.state.spa == 88 && ir.state.has_air && ir.state.air == 156 &&
         !ir.state.has_pool && ir.water_mode() == 3 && ir.current_page() == 0x01 &&
-        ir.has_pool_heat() && ir.pool_heat_enabled() && ir.has_spa_heat() && !ir.spa_heat_enabled())
+        ir.has_pool_heat() && ir.pool_heat_enabled() && ir.has_spa_heat() && !ir.spa_heat_enabled() &&
+        ir.has_pool_light() && ir.pool_light_on())
       ok++;
   }
 

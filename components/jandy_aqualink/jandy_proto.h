@@ -303,6 +303,8 @@ class IaqReader {
   bool pool_heat_enabled() const { return pool_heat_enabled_; }
   bool has_spa_heat() const { return has_spa_heat_; }
   bool spa_heat_enabled() const { return spa_heat_enabled_; }
+  bool has_pool_light() const { return has_pool_light_; }
+  bool pool_light_on() const { return pool_light_on_; }
   int swg_pool_key() const { return swg_pool_key_; }
 
  private:
@@ -313,10 +315,10 @@ class IaqReader {
   uint8_t page_type_ = 0;
   uint8_t current_page_ = 0;
   int water_mode_ = 0;
-  // HOME-page heater button indices (this panel's home layout) and decoded state.
-  static constexpr int BTN_POOL_HEAT = 2, BTN_SPA_HEAT = 3;
-  bool pool_heat_enabled_ = false, spa_heat_enabled_ = false;
-  bool has_pool_heat_ = false, has_spa_heat_ = false;
+  // HOME-page equipment button indices (this panel's home layout); state 3 = on.
+  static constexpr int BTN_POOL_HEAT = 2, BTN_SPA_HEAT = 3, BTN_POOL_LIGHT = 6;
+  bool pool_heat_enabled_ = false, spa_heat_enabled_ = false, pool_light_on_ = false;
+  bool has_pool_heat_ = false, has_spa_heat_ = false, has_pool_light_ = false;
   int swg_pool_key_ = -1;
   uint8_t btn_state_[MAX_LINES] = {0};
   bool btn_present_[MAX_LINES] = {false};

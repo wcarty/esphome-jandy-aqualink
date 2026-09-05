@@ -27,6 +27,7 @@ _VALUE_OFFSET = 4
 # HOME-page heater button indices (this panel's home layout): Pool Heat, Spa Heat.
 _BTN_POOL_HEAT = 2
 _BTN_SPA_HEAT = 3
+_BTN_POOL_LIGHT = 6
 
 # Human names for iAqualink page types (AqualinkD aq_serial.h IAQ_PAGE_*), used
 # for legible survey logging and for gating navigation by current page.
@@ -104,6 +105,8 @@ class IaqReader:
         self.spa_heat_enabled = False
         self.has_pool_heat = False
         self.has_spa_heat = False
+        self.pool_light_on = False
+        self.has_pool_light = False
         self._btn_state = {}  # index -> state, for the page being loaded
         self.current_page = 0  # page type of the most recently completed page
         self.pump_rpm = 0
@@ -169,6 +172,9 @@ class IaqReader:
         if _BTN_SPA_HEAT in self._btn_state:
             self.spa_heat_enabled = self._btn_state[_BTN_SPA_HEAT] == 3
             self.has_spa_heat = True
+        if _BTN_POOL_LIGHT in self._btn_state:
+            self.pool_light_on = self._btn_state[_BTN_POOL_LIGHT] == 3
+            self.has_pool_light = True
 
     def _commit_status(self):
         # The STATUS page lists the pump as text lines: "    RPM: 2750" and

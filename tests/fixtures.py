@@ -89,3 +89,11 @@ def display_frame(line_byte: int, text: str, degree: bool = False, dest: int = 0
     inner.append(sum(inner) & 0xFF)  # checksum over everything so far
     inner += b"\x10\x03"
     return bytes(inner)
+
+
+def iaq_button_frame(index: int, state: int, dest: int = 0x33) -> bytes:
+    """Build a minimal logical cmd-0x24 iAqualink button frame."""
+    inner = bytearray([0x10, 0x02, dest, 0x24, index, state, 0x00, 0x0B])
+    inner.append(sum(inner) & 0xFF)
+    inner += b"\x10\x03"
+    return bytes(inner)
