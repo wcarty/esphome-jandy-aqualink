@@ -37,6 +37,16 @@ the other.
 
 ### 1. Gather hardware
 
+<p align="center">
+  <a href="https://docs.m5stack.com/en/core/ATOM%20Lite">
+    <img src="https://raw.githubusercontent.com/m5stack/m5-docs/e5354c5dcc61d16fdc1dff9d92c2c760728d0b60/docs/assets/img/product_pics/core/minicore/atom/atom_lite_01.webp" alt="M5Stack Atom Lite ESP32 controller" width="260">
+  </a>
+  &nbsp;&nbsp;&nbsp;&nbsp;
+  <a href="https://docs.m5stack.com/en/base/atom_rs485">
+    <img src="https://raw.githubusercontent.com/m5stack/m5-docs/e5354c5dcc61d16fdc1dff9d92c2c760728d0b60/docs/assets/img/product_pics/atom_base/atomicRS485/atom485.webp" alt="M5Stack ATOM RS485 Base" width="260">
+  </a>
+</p>
+
 | Hardware | Tested model | Role |
 | --- | --- | --- |
 | 🧠 ESP32 controller | [**M5Stack Atom Lite**](https://docs.m5stack.com/en/core/ATOM%20Lite) | Runs ESPHome and the RS485 protocol task |
