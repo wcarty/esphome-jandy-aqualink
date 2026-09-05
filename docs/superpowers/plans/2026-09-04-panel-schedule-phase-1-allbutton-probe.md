@@ -252,38 +252,41 @@ Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>"
 - Consumes: the existing `Frame` representation and `selftest(std::string &detail)` in `jandy_proto.cpp:345`
 - Produces: `struct BusCensus` with `void feed(uint8_t dest, uint8_t cmd)`, `uint32_t count(uint8_t dest, uint8_t cmd) const`, `bool saw_display_at(uint8_t dest) const`
 
-- [ ] **Step 1: Add the failing selftest assertion**
+- [ ] **Step 1: Add the selftest vector, in the existing house style**
 
-In `jandy_proto.cpp`, inside `selftest()`, add before the final return:
+`selftest()` does NOT early-return on failure. It increments `ok` and `total`, appends a hint to `detail`, and reports `ok/total` at the end. Match that or you break the count. In `jandy_proto.cpp`, add immediately before `detail = std::to_string(ok) + ...`:
 
 ```cpp
+  // Bus census: same vectors as tests/test_census.py.
   {
+    total++;
     BusCensus census;
     census.feed(0x33, CMD_DISPLAY);
     census.feed(0x33, CMD_DISPLAY);
-    census.feed(0x60, 0x00);
-    if (census.count(0x33, CMD_DISPLAY) != 2) {
-      detail = "census: 0x33/0x25 count != 2";
-      return false;
-    }
-    if (!census.saw_display_at(0x33)) {
-      detail = "census: expected display at 0x33";
-      return false;
-    }
-    if (census.saw_display_at(0x08)) {
-      detail = "census: unexpected display at 0x08";
-      return false;
-    }
+    census.feed(0x60, CMD_POLL);
+    bool pass = census.count(0x33, CMD_DISPLAY) == 2 && census.count(0x60, CMD_POLL) == 1 &&
+                census.count(0x08, CMD_DISPLAY) == 0 && census.saw_display_at(0x33) &&
+                !census.saw_display_at(0x08);
+    if (pass) ok++;
+    else detail += " CENSUS";
   }
 ```
 
-- [ ] **Step 2: Verify it fails to compile**
+Known quirk, do not fix here: the final `detail = std::to_string(ok) + "/" + std::to_string(total);` overwrites every hint appended by the `detail +=` branches, so the hints never reach the log. Harmless to the pass or fail result, and changing selftest reporting immediately before a live flash is not worth the risk. Worth a separate commit later.
 
-```bash
-pwsh -File esphome_ws.ps1 compile
+- [ ] **Step 2: There is no local compiler, and the build pulls from GitHub**
+
+`firmware/pool-bridge.yaml:46-49` declares:
+
+```yaml
+external_components:
+  - source: github://4pBdhJoZ3Xy3reVvBoU9C3YPzyXDDU/esphome-jandy-aqualink
+    refresh: 0s
 ```
 
-Expected: compile error, `'BusCensus' was not declared in this scope`. Do not upload.
+The ESPHome dashboard fetches this component from the **public GitHub repo**, not from the local checkout, and `esphome_ws.ps1` only drives that dashboard over a WebSocket. There is no local `esphome` and no local `g++`.
+
+So the C++ cannot be compiled at all until the branch is pushed. Treat "write the C++" and "verify the C++" as separated by a push, and never flash anything that has not reported `selftest PASS`.
 
 - [ ] **Step 3: Declare BusCensus in the header**
 
@@ -344,13 +347,18 @@ bool BusCensus::saw_display_at(uint8_t dest) const {
 }
 ```
 
-- [ ] **Step 5: Compile and confirm the selftest count went up**
+- [ ] **Step 5: Push, then compile and confirm the selftest count went up**
+
+Requires the founder's go-ahead, because it publishes to a public repo.
 
 ```bash
-pwsh -File esphome_ws.ps1 compile
+git push -u origin feat/bus-census-allbutton-probe
+pwsh -File esphome_ws.ps1 -Action compile -Config pool-bridge.yaml -TimeoutSec 600
 ```
 
-Expected: clean compile. Do not upload yet, Task 3 adds the probe and they flash together.
+Note that `refresh: 0s` re-pulls on every compile, so the dashboard will pick the pushed branch up only if the component source is pointed at it. If the source stays pinned to the default branch, this needs a merge to `master` first, which is a decision for the founder, not a step to take unilaterally.
+
+Expected: clean compile. Do not upload yet, Task 3 adds the census switch and they flash together.
 
 - [ ] **Step 6: Commit**
 
