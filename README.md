@@ -1,96 +1,59 @@
-# ESPHome Jandy AquaLink
+# 🌊 ESPHome Jandy AquaLink
 
-Monitor and control a Jandy AquaLink RS pool system from Home Assistant with an
-ESP32 connected directly to the RS485 bus.
+> **A local, ESP32-native bridge for monitoring and carefully controlling a
+> Jandy AquaLink RS pool system from Home Assistant.**
 
-An ESPHome external component that talks to a **Jandy AquaLink RS** pool panel over
-its RS485 bus from an ESP32 wired directly to the bus. It does the timing-critical
-work **at the bus**, on a dedicated CPU core, so there is no separate Linux box and
-no WiFi in the real-time path. It reports into, and is controlled from, **Home
-Assistant natively**.
+[![ESPHome](https://img.shields.io/badge/ESPHome-external%20component-2CA3D5?logo=esphome&logoColor=white)](https://esphome.io/)
+[![Platform](https://img.shields.io/badge/platform-ESP32-00979D?logo=espressif&logoColor=white)](https://www.espressif.com/)
+[![Protocol](https://img.shields.io/badge/bus-RS485-0B7285)](docs/PANEL-CAPABILITY-MAP.md)
 
-Built and proven against a real AquaLink RS-8 panel with a Pentair IntelliFlo VS
-pump on the same bus, on an M5Stack Atom Lite (about $20 of hardware).
+Connect an ESP32 directly to the pool panel's RS485 bus—no separate Linux box,
+cloud service, or Wi-Fi bridge in the real-time path. The timing-critical bus
+task runs on a dedicated ESP32 CPU core while Home Assistant and Wi-Fi run on
+the other.
 
 > [!WARNING]
-> This project can control live pool equipment. Start with the master interlock
-> off, confirm that readings look right, and stay at the equipment pad for a
-> first test of every control. Do not use another emulator at the same bus
-> address.
+> **This project can operate live pool equipment.** Start with control disabled,
+> confirm monitoring data at the equipment pad, and test one circuit at a time.
+> Never run another emulator at the same RS485 address.
 
-## What it does
+## ✨ At a glance
 
-| Area | Available in Home Assistant |
-| --- | --- |
-| Monitoring | Pool, spa, and air temperature; equipment state; pump RPM and watts; AquaPure output, salt level, and faults; TrueSense pH and ORP |
-| Everyday control | Filter pump, cleaner, lights, blower, pool/spa mode, AUX2 color wheel, and AUX6 Stenner dosing pump |
-| Advanced control | Pump RPM presets or slider; pool and spa heater enable and setpoints; AquaPure pool output |
-| Safety | Master interlock off after every restart; iAqualink presence and page checks protect iAqualink writes |
+| Capability | Status | What you get |
+| --- | :---: | --- |
+| 🌡️ Environment | ✅ | Pool, spa, and air temperature |
+| ⚡ Equipment | ✅ | Filter pump, cleaner, blower, pool/spa mode, and heater state |
+| 💧 Water chemistry | ✅ | AquaPure output, salt level, faults, TrueSense pH, and ORP |
+| 🎛️ Everyday control | ✅ | State-aware equipment switches, pool light, color wheel, and Stenner pump |
+| 🔥 Advanced control | ✅ | Pump RPM, heater setpoints, heater enable, and AquaPure output |
+| 🖥️ Local dashboard | ✅ | Authenticated, responsive ESPHome web dashboard |
+| 🛡️ Safety gates | ✅ | Boot-off master interlock, page checks, and narrow scheduler permission |
 
-Home Assistant can run it as a **scheduler**: a narrow, restart-surviving permission
-lets HA set pump speed and toggle the filter pump and cleaner unattended, while
-everything riskier stays behind the master interlock.
+> [!TIP]
+> The [complete example configuration](firmware/pool-bridge.yaml) creates every
+> supported entity and is the recommended starting point.
 
-## Safety model
+## 🚀 Quick start
 
-This drives live equipment, so writes are conservative by construction:
-- A **master interlock** switch gates every write and **boots OFF** on every restart.
-  With it off, the component is inert presence only.
-- iAqualink-based writes also require the iAqualink presence channel to be on.
-  The direct AUX2 and AUX6 keys use the AllButton path and still require the
-  master interlock.
-- The autonomous **scheduler** permission is scoped **per keycode** to exactly the
-  filter pump and cleaner (plus pump speed). It can never fire a heater, valve, or
-  light, even when armed.
-- Reads are view-only and never send an equipment key.
-- Only one device may emulate a given bus address at a time. Do not run another
-  emulator (AqualinkD, aquaweb) on the same address concurrently.
+### 1. Gather hardware
 
-The control surface is the **encrypted Home Assistant native API** plus OTA. The
-example configuration also enables ESPHome's local web interface with required,
-secret-backed authentication. It groups pool overview, water chemistry,
-equipment, automation, and diagnostics into a responsive pool-operations
-dashboard with a local professional theme.
+- ✅ An ESP32—tested with an **M5Stack Atom Lite**
+- ✅ An RS485 transceiver—tested with the **M5Stack ATOM RS485 base**
+- ✅ Access to the panel's RS485 A, B, and ground terminals
 
-## Why this is interesting
+The tested ATOM RS485 base uses automatic direction control. Defaults are
+**GPIO19 TX**, **GPIO22 RX**, **9600 baud**, 8N1.
 
-Established local Jandy control (AqualinkD, the gold standard) runs on a separate
-always-on Linux box wired to the bus, because the reply window is too tight for a
-WiFi bridge. This component meets that window **on the ESP32 itself**: the bus state
-machine runs in a FreeRTOS task pinned to core 1, while WiFi and the Home Assistant
-API run on core 0, so the network can never delay a reply. The result is full panel
-presence, reading, and gated control on roughly $20 of hardware, native to Home
-Assistant, over the air updatable, with no extra computer.
+### 2. Configure ESPHome
 
-## Hardware
-
-- An ESP32. Tested on an **M5Stack Atom Lite**.
-- An RS485 transceiver. Tested with the **M5Stack ATOM RS485 base** (SP3485,
-  automatic direction control, so no direction GPIO is needed).
-- A connection to the panel's RS485 bus (the AUX / RS485 terminals): A, B, and
-  ground. Get A/B polarity right; reversed shows no valid frames, correct shows a
-  steady stream of checksum-clean frames.
-
-Default pins match the M5 ATOM RS485 base: **GPIO19 = TX, GPIO22 = RX**, 9600 baud,
-8N1. Override them in the config if your wiring differs.
-
-## Install
-
-This is an ESPHome external component. A complete, working example device config is
-in [`firmware/pool-bridge.yaml`](firmware/pool-bridge.yaml).
-
-1. Wire the ESP32 and RS485 transceiver as described in [Hardware](#hardware).
-2. Copy the example configuration and add your Wi-Fi, API encryption, and OTA
-   secrets.
-3. Point ESPHome at this component:
+Copy [`firmware/pool-bridge.yaml`](firmware/pool-bridge.yaml), then add your
+Wi-Fi, API encryption, OTA, and dashboard credentials to `secrets.yaml`.
 
 ```yaml
 external_components:
   - source: github://wcarty/esphome-jandy-aqualink
     refresh: 0s
 ```
-
-4. Add the minimum component configuration:
 
 ```yaml
 jandy_aqualink:
@@ -103,64 +66,113 @@ jandy_aqualink:
     name: Jandy Bus Checksum Errors
 ```
 
-5. Flash the device. `Polls Answered` should climb steadily and `Checksum Errors`
-   should remain at zero.
-6. Turn on **iAqualink Presence** to receive temperature and iAqualink-page
-   readings. Leave **Pool Keypad Keypress Armed** off until you are ready to
-   operate equipment.
+### 3. Flash and verify
 
-The example config creates every supported entity and is the best starting point
-for a complete installation. Add `pool_bridge_web_username` and
-`pool_bridge_web_password` to your ESPHome `secrets.yaml` before compiling; they
-protect the local web interface.
+1. ✅ Flash the ESP32.
+2. ✅ Confirm **Polls Answered** climbs steadily.
+3. ✅ Confirm **Checksum Errors** stays at zero.
+4. ✅ Turn on **iAqualink Presence** to receive rich display-page readings.
+5. ⚠️ Keep **Pool Keypad Keypress Armed** off until you are ready to test a
+   control at the pool pad.
 
-Open `http://<pool-bridge-ip>/` on your trusted local network to use the
-dashboard. The master interlock remains off after every restart, including when
-using the web interface.
+Open `http://<pool-bridge-ip>/` on your trusted local network for the
+authenticated dashboard. The master interlock remains off after every restart.
 
-## Picking a keypad address
+## 🛡️ Built for safe control
 
-The panel supports up to four AllButton keypads at `0x08` to `0x0B`. Emulate one no
-real keypad uses, or two devices will answer the same poll and corrupt the bus.
-`0x08` is a good first try. Watch `Checksum Errors`: zero means no collision; if it
-climbs, switch addresses. Temperatures and the richer control use the iAqualink
-controller slot (`0x33`), which on the test panel was free because its wireless
-controller had long since died.
+| Guardrail | Why it matters |
+| --- | --- |
+| **Master interlock starts OFF** | The bridge begins as monitor-only after every restart. |
+| **iAqualink page confirmation** | Page-scoped commands cannot be sent from the wrong screen. |
+| **State-aware switches** | Confirmed circuits only press the panel when their requested state differs. |
+| **One write sequence at a time** | Multi-step pump, heater, and chlorinator writes cannot overlap. |
+| **Narrow scheduler permission** | Automation may operate only filter pump, cleaner, and pump speed. |
+| **Local authenticated web UI** | Dashboard access requires secret-backed credentials. |
 
-## Notes and limitations
+> [!IMPORTANT]
+> The **Pool Color Wheel** and **Stenner Dosing Pump** use command-state
+> switches because AUX2/AUX6 feedback is not decoded yet. They never toggle on
+> boot, but their displayed state means “last command sent by this bridge,” not
+> necessarily the relay's state after manual panel use.
 
-- Setpoint writes are confirmed by equipment behavior, not by a readback. The panel
-  does not echo the target back to this controller, so a write is verified by the
-  heater firing or settling, not by reading the number back.
-- The AquaPure pool-output control is page-confirmed and requires both the master
-  interlock and iAqualink Presence. Boost and other AquaPure settings are not
-  changed by this component.
-- The heater-enabled status decode is unreliable on the test panel; trust the panel's
-  own heat indicator over that sensor.
+## 🎚️ Controls and monitoring
 
-## Documentation
+### Everyday operation
 
-Start with the [documentation guide](docs/README.md). It points to the current
-capability map and roadmap, and separates them from historical design and session
-notes.
+- ✅ **Pool/spa, filter pump, cleaner, air blower, pool heat, spa heat**:
+  panel-state-aware ON/OFF switches.
+- ✅ **Pool light**: state-aware ON/OFF switch from the iAqualink HOME page.
+- ✅ **Color wheel and Stenner pump**: boot-inert ON/OFF command switches.
+- ✅ **Pump speed**: presets and a 600–3450 RPM slider.
+- ✅ **AquaPure**: pool output control from 0–100%.
+- ✅ **Heaters**: enable switches and pool/spa setpoint controls.
 
-## Repository layout
+### Live monitoring
 
-- `components/jandy_aqualink/` the ESPHome component. `jandy_proto.*` is the pure
-  protocol logic (framing, de-stuffing, checksum, decoders, frame builders) with no
-  Arduino or ESPHome dependency; `jandy_aqualink.*` is the hardware and ESPHome glue
-  with the gated control state machines; `__init__.py` is the config codegen.
-- `firmware/pool-bridge.yaml` a complete example device config.
-- `jandy/`, `tests/` a Python reference implementation of the protocol logic and its
-  unit tests. The C++ mirrors these and self-tests the same vectors on boot.
-- `docs/` the roadmap and the design and build history.
+- 🌡️ Pool, spa, and air temperatures
+- ⚡ Pump RPM and watts
+- 🧂 Salt level, chlorinator output, status, and generating state
+- 🧪 TrueSense pH and ORP
+- 📊 Bus health, reply latency, Wi-Fi signal, and uptime
 
-## Credits
+## 🔌 Choosing a keypad address
 
-This repository is based on and continues the work in the original
+The panel supports AllButton keypads at `0x08` through `0x0B`. Choose an
+address no physical keypad uses; two devices answering the same poll corrupt
+the bus. `0x08` is a good first choice.
+
+> [!CAUTION]
+> If **Checksum Errors** rises, stop and select a different keypad address.
+
+The richer display and control path uses the iAqualink Touch slot (`0x33`).
+It must also be unused by another live iAqualink controller.
+
+## 🧭 Dashboard
+
+The local dashboard is organized into **Pool Overview**, **Water Chemistry**,
+**Equipment Status**, **Automation & Controls**, and **Diagnostics**. It is
+designed for a trusted local network only; ESPHome's web server is HTTP, not
+HTTPS.
+
+Add these secrets before compiling:
+
+```yaml
+pool_bridge_web_username: your_username
+pool_bridge_web_password: a_strong_password
+```
+
+## ⚠️ Limits to know
+
+- Heater and AquaPure setpoint writes are protocol-confirmed, but the panel
+  does not echo the chosen numeric target back to this controller.
+- AquaPure output requires both **iAqualink Presence** and the master interlock.
+- Boost and other AquaPure settings are intentionally not changed.
+- Trust the panel's physical heat indicator over any unexpected heater state.
+
+## 📚 Documentation
+
+| Start here | Purpose |
+| --- | --- |
+| [📖 Documentation guide](docs/README.md) | Current reference and historical notes |
+| [🧩 Panel capability map](docs/PANEL-CAPABILITY-MAP.md) | Protocol support and control limits |
+| [🗺️ Roadmap](docs/ROADMAP.md) | Current state and future ideas |
+| [⚙️ Example configuration](firmware/pool-bridge.yaml) | Complete ESPHome device setup |
+
+## 🗂️ Repository layout
+
+| Path | Contents |
+| --- | --- |
+| `components/jandy_aqualink/` | ESPHome component, protocol decoder, and control state machines |
+| `firmware/pool-bridge.yaml` | Complete example device configuration |
+| `jandy/` and `tests/` | Python protocol reference and regression tests |
+| `docs/` | Capability map, roadmap, and engineering history |
+
+## 🙏 Credits
+
+Built on and continuing the work of the original
 [ESPHome Jandy AquaLink repository](https://github.com/4pBdhJoZ3Xy3reVvBoU9C3YPzyXDDU/esphome-jandy-aqualink).
 
 Protocol understanding stands on the shoulders of
 [AqualinkD](https://github.com/sfeakes/AqualinkD) and
 [aquaweb](https://github.com/earlephilhower/aquaweb). This is an independent
-ESP32-native reimplementation, not affiliated with Jandy or Zodiac.
+ESP32-native reimplementation and is not affiliated with Jandy or Zodiac.
