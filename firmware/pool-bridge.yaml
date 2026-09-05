@@ -80,6 +80,17 @@ jandy_aqualink:
     name: Pool Pump Speed
   pump_watts:
     name: Pool Pump Watts
+  # AquaPure salt-water chlorinator readings are passively decoded from its
+  # normal RS485 poll/reply traffic. They work without iAqualink presence and
+  # do not send any chlorinator command.
+  salt_level:
+    name: Pool Salt Level
+  salt_chlorinator_output:
+    name: Pool Chlorinator Output
+  salt_chlorinator_status:
+    name: Pool Chlorinator Status
+  salt_chlorinator_generating:
+    name: Pool Chlorinator Generating
   # Equipment on/off decoded from the panel's keypad status bitmap (the inert
   # AllButton seat, address 0x08). Read-only; updates continuously as the panel
   # changes equipment. Bit positions pinned live 2026-06-01 (see docs/).
@@ -220,6 +231,19 @@ button:
     icon: "mdi:close-octagon"
     on_press:
       - lambda: "id(jandy_comp).arm_key(0x0E);"   # KEY_CANCEL
+
+  # Direct AllButton circuit keys from AquaLinkD. Both require the same master
+  # interlock as every other write; AUX6's DLE keycode is safely byte-stuffed.
+  - platform: template
+    name: "Pool Color Wheel"
+    icon: "mdi:palette"
+    on_press:
+      - lambda: "id(jandy_comp).press_aux2();"
+  - platform: template
+    name: "Pool Stenner Dosing Pump"
+    icon: "mdi:pump"
+    on_press:
+      - lambda: "id(jandy_comp).press_aux6();"
 
   # iAqualink control: switch the panel from spa mode to pool mode by pressing
   # the Spa toggle (0x12). Gated: needs the interlock on, iAqualink presence on,

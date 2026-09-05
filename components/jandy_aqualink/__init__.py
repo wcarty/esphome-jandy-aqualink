@@ -1,6 +1,6 @@
 import esphome.codegen as cg
 import esphome.config_validation as cv
-from esphome.components import binary_sensor, sensor
+from esphome.components import binary_sensor, sensor, text_sensor
 from esphome.const import (
     CONF_ID,
     ENTITY_CATEGORY_DIAGNOSTIC,
@@ -8,7 +8,7 @@ from esphome.const import (
     STATE_CLASS_TOTAL_INCREASING,
 )
 
-AUTO_LOAD = ["sensor", "number", "binary_sensor"]
+AUTO_LOAD = ["sensor", "number", "binary_sensor", "text_sensor"]
 
 jandy_ns = cg.esphome_ns.namespace("jandy_aqualink")
 JandyAqualink = jandy_ns.class_("JandyAqualink", cg.Component)
@@ -25,6 +25,10 @@ CONF_POOL_TEMP = "pool_temp"
 CONF_SPA_TEMP = "spa_temp"
 CONF_PUMP_RPM = "pump_rpm"
 CONF_PUMP_WATTS = "pump_watts"
+CONF_SALT_LEVEL = "salt_level"
+CONF_SALT_CHLORINATOR_OUTPUT = "salt_chlorinator_output"
+CONF_SALT_CHLORINATOR_STATUS = "salt_chlorinator_status"
+CONF_SALT_CHLORINATOR_GENERATING = "salt_chlorinator_generating"
 CONF_SPA_MODE = "spa_mode"
 CONF_AIR_BLOWER = "air_blower"
 CONF_FILTER_PUMP_STATE = "filter_pump_state"
@@ -83,6 +87,24 @@ CONFIG_SCHEMA = cv.Schema(
             state_class=STATE_CLASS_MEASUREMENT,
             icon="mdi:flash",
         ),
+        cv.Optional(CONF_SALT_LEVEL): sensor.sensor_schema(
+            unit_of_measurement="ppm",
+            accuracy_decimals=0,
+            state_class=STATE_CLASS_MEASUREMENT,
+            icon="mdi:shaker-outline",
+        ),
+        cv.Optional(CONF_SALT_CHLORINATOR_OUTPUT): sensor.sensor_schema(
+            unit_of_measurement="%",
+            accuracy_decimals=0,
+            state_class=STATE_CLASS_MEASUREMENT,
+            icon="mdi:percent",
+        ),
+        cv.Optional(CONF_SALT_CHLORINATOR_STATUS): text_sensor.text_sensor_schema(
+            icon="mdi:water-check",
+        ),
+        cv.Optional(CONF_SALT_CHLORINATOR_GENERATING): binary_sensor.binary_sensor_schema(
+            icon="mdi:water-check",
+        ),
         cv.Optional(CONF_SPA_MODE): binary_sensor.binary_sensor_schema(
             icon="mdi:hot-tub",
         ),
@@ -140,6 +162,18 @@ async def to_code(config):
     if CONF_PUMP_WATTS in config:
         s = await sensor.new_sensor(config[CONF_PUMP_WATTS])
         cg.add(var.set_pump_watts_sensor(s))
+    if CONF_SALT_LEVEL in config:
+        s = await sensor.new_sensor(config[CONF_SALT_LEVEL])
+        cg.add(var.set_salt_level_sensor(s))
+    if CONF_SALT_CHLORINATOR_OUTPUT in config:
+        s = await sensor.new_sensor(config[CONF_SALT_CHLORINATOR_OUTPUT])
+        cg.add(var.set_salt_chlorinator_output_sensor(s))
+    if CONF_SALT_CHLORINATOR_STATUS in config:
+        s = await text_sensor.new_text_sensor(config[CONF_SALT_CHLORINATOR_STATUS])
+        cg.add(var.set_salt_chlorinator_status_ts(s))
+    if CONF_SALT_CHLORINATOR_GENERATING in config:
+        b = await binary_sensor.new_binary_sensor(config[CONF_SALT_CHLORINATOR_GENERATING])
+        cg.add(var.set_salt_chlorinator_generating_bs(b))
     if CONF_SPA_MODE in config:
         b = await binary_sensor.new_binary_sensor(config[CONF_SPA_MODE])
         cg.add(var.set_spa_mode_bs(b))

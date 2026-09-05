@@ -16,7 +16,9 @@ import unittest
 from jandy.frames import (
     FrameExtractor,
     build_ack,
+    build_ack_wire,
     build_key_ack,
+    is_direct_aux_key,
     is_safe_nav_key,
     ACK_IAQ_TOUCH,
     ACK_ALLB_SIM,
@@ -25,6 +27,8 @@ from jandy.frames import (
     KEY_LEFT,
     KEY_RIGHT,
     KEY_ENTER,
+    KEY_AUX2,
+    KEY_AUX6,
 )
 from tests import fixtures as fx
 
@@ -56,6 +60,22 @@ class TestBuildKeyAck(unittest.TestCase):
         for key in (KEY_MENU, KEY_CANCEL, KEY_LEFT, KEY_RIGHT, KEY_ENTER):
             ack = build_key_ack(key)
             self.assertNotIn(0x10, ack[2:7], f"key 0x{key:02X} produces a 0x10 in payload")
+
+    def test_direct_aux_keys_are_allowlisted_and_wire_encoded(self):
+        self.assertTrue(is_direct_aux_key(KEY_AUX2))
+        self.assertTrue(is_direct_aux_key(KEY_AUX6))
+        self.assertFalse(is_direct_aux_key(0x05))
+        self.assertEqual(
+            build_ack_wire(ACK_ALLB_SIM, KEY_AUX2),
+            fx.h("10 02 00 01 80 0A 9D 10 03"),
+        )
+        self.assertEqual(
+            build_ack_wire(ACK_ALLB_SIM, KEY_AUX6),
+            fx.h("10 02 00 01 80 10 00 A3 10 03"),
+        )
+        decoded = FrameExtractor().feed(build_ack_wire(ACK_ALLB_SIM, KEY_AUX6))
+        self.assertEqual(len(decoded), 1)
+        self.assertTrue(decoded[0].checksum_valid())
 
 
 class TestBuildAck(unittest.TestCase):

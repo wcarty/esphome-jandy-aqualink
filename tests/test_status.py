@@ -10,7 +10,7 @@ so it is intentionally not decoded here until a real frame is captured.
 import unittest
 
 from jandy.frames import FrameExtractor, Frame
-from jandy.status import decode_status, decode_keypad_status
+from jandy.status import decode_status, decode_keypad_status, SwgReader
 from tests import fixtures as fx
 
 
@@ -67,6 +67,24 @@ class TestKeypadStatus(unittest.TestCase):
 
     def test_non_status_frame_returns_empty(self):
         self.assertEqual(decode_keypad_status(frame(fx.POLL_PUMP)), {})
+
+
+class TestSwgReader(unittest.TestCase):
+    def test_decodes_output_salt_and_generating_state(self):
+        reader = SwgReader()
+        for raw in (fx.SWG_PERCENT_85, fx.POLL_SWG, fx.SWG_PPM_ON):
+            reader.feed(frame(raw))
+        self.assertEqual(reader.state["salt_chlorinator_output"], 85)
+        self.assertEqual(reader.state["salt_level"], 5600)
+        self.assertEqual(reader.state["salt_chlorinator_status"], "on")
+        self.assertTrue(reader.state["salt_chlorinator_generating"])
+
+    def test_reports_fault_status_and_not_generating(self):
+        reader = SwgReader()
+        for raw in (fx.SWG_PERCENT_85, fx.POLL_SWG, fx.SWG_PPM_NO_FLOW):
+            reader.feed(frame(raw))
+        self.assertEqual(reader.state["salt_chlorinator_status"], "no_flow")
+        self.assertFalse(reader.state["salt_chlorinator_generating"])
 
 
 if __name__ == "__main__":

@@ -18,10 +18,14 @@ Reading (no actuation):
 - Emulates the iAqualink controller (`0x33`) to read **pool / spa / air temperatures**
   and decode live **equipment status** (filter pump, cleaner, spa mode, blower).
 - Reads **pump speed (RPM) and watts** from the panel's status page.
+- Passively reads **AquaPure salt chlorinator** output percentage, salt level,
+  operating state, and faults from its normal RS485 poll/reply traffic.
 
 Control (all gated, off by default, see Safety):
 - **Pump speed** by exact RPM or presets, salt-cell-flow aware.
 - **Filter pump, cleaner, lights, blower**, and **pool / spa mode** switching.
+- **AUX2** and **AUX6** direct circuit toggles (for the configured color wheel
+  and Stenner dosing pump).
 - **Heaters** on/off and **temperature setpoints** (pool and spa).
 
 Home Assistant can run it as a **scheduler**: a narrow, restart-surviving permission
@@ -104,9 +108,8 @@ controller had long since died.
 - Setpoint writes are confirmed by equipment behavior, not by a readback. The panel
   does not echo the target back to this controller, so a write is verified by the
   heater firing or settling, not by reading the number back.
-- Salt cell percentage and salt level are not exposed on any page this panel makes
-  reachable, so the component governs pump flow (which gates whether the cell can
-  generate) but not the cell directly.
+- Salt chlorinator readings are read-only. The component does not change output,
+  boost, or any other AquaPure setting.
 - The heater-enabled status decode is unreliable on the test panel; trust the panel's
   own heat indicator over that sensor.
 

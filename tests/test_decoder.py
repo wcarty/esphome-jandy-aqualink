@@ -51,6 +51,13 @@ class TestPoolDecoder(unittest.TestCase):
         d.feed(fx.STATUS_38_TEMP)
         self.assertEqual(d.last_frame_by_type[(0x38, 0x0C)].raw, fx.STATUS_38_TEMP)
 
+    def test_decodes_salt_chlorinator_exchange(self):
+        d = PoolDecoder()
+        d.feed(fx.SWG_PERCENT_85 + fx.POLL_SWG + fx.SWG_PPM_ON)
+        self.assertEqual(d.state["salt_chlorinator_output"], 85)
+        self.assertEqual(d.state["salt_level"], 5600)
+        self.assertTrue(d.state["salt_chlorinator_generating"])
+
 
 if __name__ == "__main__":
     unittest.main()

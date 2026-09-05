@@ -11,13 +11,14 @@ from collections import Counter
 
 from .frames import FrameExtractor
 from .display import DisplayReader
-from .status import decode_status
+from .status import decode_status, SwgReader
 
 
 class PoolDecoder:
     def __init__(self):
         self._extractor = FrameExtractor()
         self._display = DisplayReader()
+        self._swg = SwgReader()
         self.state = {}
         self.stats = {"bytes": 0, "frames": 0, "bad_checksum": 0}
         self.message_counts = Counter()
@@ -37,6 +38,8 @@ class PoolDecoder:
             self.last_frame_by_type[key] = frame
 
             self._display.feed(frame)
+            self._swg.feed(frame)
             self.state.update(self._display.readings)
             self.state.update(decode_status(frame))
+            self.state.update(self._swg.state)
         return frames

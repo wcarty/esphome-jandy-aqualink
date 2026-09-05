@@ -74,6 +74,65 @@ KeypadStatus decode_keypad_status(const Frame &f) {
   return s;
 }
 
+size_t build_ack_wire(uint8_t ack_type, uint8_t key, uint8_t *out, size_t out_cap) {
+  uint8_t logical[9];
+  build_ack(ack_type, key, logical);
+  size_t n = 0;
+  auto append = [&](uint8_t byte, bool stuff) {
+    if (n >= out_cap) return false;
+    out[n++] = byte;
+    if (stuff && byte == DLE) {
+      if (n >= out_cap) return false;
+      out[n++] = STUFF;
+    }
+    return true;
+  };
+  // The framing DLEs are markers. Stuff only the key and checksum bytes.
+  for (size_t i = 0; i < 5; ++i)
+    if (!append(logical[i], false)) return 0;
+  if (!append(logical[5], true) || !append(logical[6], true) ||
+      !append(DLE, false) || !append(ETX, false))
+    return 0;
+  return n;
+}
+
+void SwgReader::feed(const Frame &f) {
+  if (f.dest() >= SWG_DEVICE_MIN && f.dest() <= SWG_DEVICE_MAX) {
+    if (f.cmd() == SWG_CMD_PERCENT && f.data_len() >= 1 && f.data()[0] <= 101) {
+      state.percent = f.data()[0];
+      state.has_percent = true;
+    }
+    awaiting_reply_ = f.cmd() == CMD_POLL;
+    return;
+  }
+
+  if (!awaiting_reply_) return;
+  awaiting_reply_ = false;
+  if (f.cmd() != SWG_CMD_PPM || f.data_len() < 2) return;
+  state.ppm = f.data()[0] * 100;
+  state.status = f.data()[1];
+  state.has_ppm = true;
+  state.has_status = true;
+}
+
+const char *swg_status_name(uint8_t status) {
+  switch (status) {
+    case 0x00: return "on";
+    case 0x01: return "no_flow";
+    case 0x02: return "low_salt";
+    case 0x04: return "high_salt";
+    case 0x08: return "clean_cell";
+    case 0x09: return "turning_off";
+    case 0x10: return "high_current";
+    case 0x20: return "low_voltage";
+    case 0x40: return "low_water_temp";
+    case 0x80: return "check_pcb";
+    case 0xFD: return "general_fault";
+    case 0xFF: return "off";
+    default: return "unknown";
+  }
+}
+
 // --- display helpers (mirror jandy/display.py) ---
 
 static int label_key(const std::string &text) {
@@ -425,6 +484,19 @@ bool selftest(std::string &detail) {
     build_key_ack(0x00, inert);
     for (int i = 0; i < 9; ++i)
       if (inert[i] != ACK_PRESENCE[i]) pass = false;
+    uint8_t aux2[11], aux6[11];
+    const uint8_t aux2_exp[] = {0x10, 0x02, 0x00, 0x01, 0x80, 0x0A, 0x9D, 0x10, 0x03};
+    const uint8_t aux6_exp[] = {0x10, 0x02, 0x00, 0x01, 0x80, 0x10, 0x00, 0xA3, 0x10, 0x03};
+    size_t aux2_n = build_ack_wire(ACK_ALLB_SIM, KEY_AUX2, aux2, sizeof(aux2));
+    size_t aux6_n = build_ack_wire(ACK_ALLB_SIM, KEY_AUX6, aux6, sizeof(aux6));
+    if (aux2_n != sizeof(aux2_exp) || aux6_n != sizeof(aux6_exp)) pass = false;
+    for (size_t i = 0; i < aux2_n && pass; ++i)
+      if (aux2[i] != aux2_exp[i]) pass = false;
+    for (size_t i = 0; i < aux6_n && pass; ++i)
+      if (aux6[i] != aux6_exp[i]) pass = false;
+    if (!is_direct_aux_key(KEY_AUX2) || !is_direct_aux_key(KEY_AUX6) ||
+        is_direct_aux_key(0x05))
+      pass = false;
     const uint8_t eq[] = {0x02, 0x01, 0x12, 0x17, 0x1E, 0x19, 0x05, 0x0A, 0x0F};
     for (uint8_t e : eq)
       if (is_safe_nav_key(e)) pass = false;
@@ -590,6 +662,26 @@ bool selftest(std::string &detail) {
                 clean.cleaner && !clean.air_blower && !clean.spa_mode;
     if (pass) ok++;
     else detail += " STATUS08";
+  }
+
+  // AquaPure SWG: panel command sets 85% output; its subsequent poll reply says
+  // 5600 ppm and status on. The reply is only accepted after an SWG poll.
+  {
+    total++;
+    auto lf = [](std::vector<uint8_t> raw) {
+      Frame f;
+      f.raw = std::move(raw);
+      return f;
+    };
+    SwgReader swg;
+    swg.feed(lf({0x10,0x02,0x50,0x11,0x55,0xC8,0x10,0x03}));
+    swg.feed(lf({0x10,0x02,0x50,0x00,0x62,0x10,0x03}));
+    swg.feed(lf({0x10,0x02,0x00,0x16,0x38,0x00,0x60,0x10,0x03}));
+    if (swg.state.has_percent && swg.state.percent == 85 && swg.state.has_ppm &&
+        swg.state.ppm == 5600 && swg.state.has_status && swg.state.status == 0x00 &&
+        std::strcmp(swg_status_name(swg.state.status), "on") == 0)
+      ok++;
+    else detail += " SWG";
   }
 
   detail = std::to_string(ok) + "/" + std::to_string(total);

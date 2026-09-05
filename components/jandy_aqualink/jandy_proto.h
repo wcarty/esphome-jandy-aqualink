@@ -16,6 +16,8 @@ namespace jandy {
 
 static constexpr uint8_t DLE = 0x10, STX = 0x02, ETX = 0x03, STUFF = 0x00;
 static constexpr uint8_t CMD_POLL = 0x00, CMD_ACK = 0x01, CMD_STATUS = 0x02, CMD_DISPLAY = 0x25;
+static constexpr uint8_t SWG_DEVICE_MIN = 0x50, SWG_DEVICE_MAX = 0x53;
+static constexpr uint8_t SWG_CMD_PERCENT = 0x11, SWG_CMD_PPM = 0x16;
 
 // Inert presence ACK for AllButton keypad emulation: dest 0x00 (master),
 // cmd 0x01, [ack_type=0x80 (ACK_ALLB_SIM), key=0x00], checksum 0x93. The key
@@ -93,12 +95,16 @@ void num2iaqt_temp(uint16_t temp, uint8_t out[6]);                        // ASC
 size_t build_settemp_frame(uint16_t temp, uint8_t *out, size_t out_cap);  // 0x24 frame; returns 24
 
 // Safe, display-only navigation keys (AqualinkD source/aq_serial.h). These move
-// the menu/display and never actuate equipment, so they are the ONLY keys this
-// build will transmit. Equipment keys (pump 0x02, spa 0x01, pool heater 0x12,
-// spa heater 0x17, aux*, override 0x1e, hold 0x19) have no constant here and are
-// refused by is_safe_nav_key.
+// the menu/display and never actuate equipment. They are refused by
+// is_safe_nav_key unless explicitly listed here.
 static constexpr uint8_t KEY_MENU = 0x09, KEY_CANCEL = 0x0E, KEY_LEFT = 0x13,
                          KEY_RIGHT = 0x18, KEY_ENTER = 0x1D;
+// Direct AllButton AUX keys, verified against AquaLinkD aq_serial.h. Unlike
+// iAqualink grid keys, these are circuit-specific and have no page-dependent
+// meaning. AUX6 is a DLE byte, so its ACK must be byte-stuffed on the wire.
+static constexpr uint8_t KEY_AUX2 = 0x0A, KEY_AUX6 = 0x10;
+
+inline bool is_direct_aux_key(uint8_t key) { return key == KEY_AUX2 || key == KEY_AUX6; }
 
 inline bool is_safe_nav_key(uint8_t key) {
   return key == KEY_MENU || key == KEY_CANCEL || key == KEY_LEFT || key == KEY_RIGHT ||
@@ -121,6 +127,10 @@ inline void build_ack(uint8_t ack_type, uint8_t key, uint8_t out[9]) {
   out[7] = DLE;
   out[8] = ETX;
 }
+
+// Build the on-wire form of an ACK, stuffing a literal DLE in the key or
+// checksum. Returns its length (9-11 bytes).
+size_t build_ack_wire(uint8_t ack_type, uint8_t key, uint8_t *out, size_t out_cap);
 
 // AllButton ACK carrying `key`. key=0x00 yields ACK_PRESENCE exactly.
 inline void build_key_ack(uint8_t key, uint8_t out[9]) { build_ack(ACK_ALLB_SIM, key, out); }
@@ -221,6 +231,26 @@ struct KeypadStatus {
   bool air_blower = false, cleaner = false, spa_mode = false, filter_pump = false;
 };
 KeypadStatus decode_keypad_status(const Frame &f);
+
+// Passive AquaPure salt-water-generator decoder. The panel sends output percentage
+// to the cell (0x50-0x53), then polls it; the following CMD_PPM reply supplies
+// salt concentration in 100-ppm units and the device status. It never transmits.
+struct SwgStatus {
+  bool has_percent = false, has_ppm = false, has_status = false;
+  int percent = 0, ppm = 0;
+  uint8_t status = 0;
+};
+
+class SwgReader {
+ public:
+  void feed(const Frame &f);
+  SwgStatus state;
+
+ private:
+  bool awaiting_reply_ = false;
+};
+
+const char *swg_status_name(uint8_t status);
 
 // Pairs keypad display labels with the value line that immediately follows, and
 // decodes the binary pool-temp status frame. Feed it checksum-valid frames.

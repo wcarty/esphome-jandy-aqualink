@@ -30,6 +30,12 @@ DISPLAY_AIR_VALUE = h("10 02 33 25 01 31 36 37 C2 BA 00 85 10 03")
 STATUS_38_TEMP = h("10 02 38 0C 12 57 66 5B 80 10 03")
 # binary status to 0x33 (cmd 0x28)
 STATUS_33_BIN = h("10 02 33 28 05 1E 1A 0F 36 EF 10 03")
+# AquaPure SWG: panel sets output to 85%, then polls cell 0x50. The cell's
+# CMD_PPM reply reports 5600 ppm and status 0x00 (on).
+SWG_PERCENT_85 = h("10 02 50 11 55 C8 10 03")
+POLL_SWG = h("10 02 50 00 62 10 03")
+SWG_PPM_ON = h("10 02 00 16 38 00 60 10 03")
+SWG_PPM_NO_FLOW = h("10 02 00 16 38 01 61 10 03")
 
 # Keypad equipment-LED status (dest 0x08, cmd 0x02): the de-stuffed LOGICAL frame
 # as the device stores it in Frame.raw. Captured live 2026-06-01 in Service mode

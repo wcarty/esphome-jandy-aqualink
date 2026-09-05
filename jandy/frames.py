@@ -133,6 +133,17 @@ def build_ack(ack_type: int, key: int) -> bytes:
     return body + bytes([cksum, DLE, ETX])
 
 
+def build_ack_wire(ack_type: int, key: int) -> bytes:
+    """Build a wire-ready ACK, stuffing DLE key and checksum bytes."""
+    logical = build_ack(ack_type, key)
+    out = bytearray(logical[:5])
+    for byte in logical[5:7]:
+        out.append(byte)
+        if byte == DLE:
+            out.append(STUFF)
+    return bytes(out) + logical[7:]
+
+
 # iAqualink Touch presence ACK (inert: ack_type 0x00, no key). Sending this in
 # reply to every frame the panel addresses to the iAqualink device (0x33) makes
 # the panel run its startup and push display pages, which carry the temperatures.
@@ -260,6 +271,15 @@ IAQ_PAGE_DEVICES = 0x36
 # key (0x13): it means "VSP1 Spd ADJ" ONLY on DEVICES, so it is named separately
 # to keep the page-gated intent explicit and never confused with a heater press.
 KEY_IAQ_DEVICES_VSP_ADJ = 0x13
+
+# Direct AllButton circuit keys, verified against AquaLinkD aq_serial.h. AUX6
+# is a DLE byte and must be stuffed when serialized in an ACK.
+KEY_AUX2 = 0x0A
+KEY_AUX6 = 0x10
+
+
+def is_direct_aux_key(key: int) -> bool:
+    return key in {KEY_AUX2, KEY_AUX6}
 
 # The pump's safe speed range (Pentair Intelliflo VS, RPM mode).
 RPM_MIN = 600

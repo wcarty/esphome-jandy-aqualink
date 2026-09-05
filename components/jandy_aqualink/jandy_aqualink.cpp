@@ -5,7 +5,8 @@
 #include "driver/uart.h"
 #include "esp_timer.h"
 
-#include <cstdio>  // snprintf
+#include <cstdio>   // snprintf
+#include <cstring>  // strcmp
 
 namespace esphome {
 namespace jandy_aqualink {
@@ -69,7 +70,8 @@ void JandyAqualink::task_loop() {
         // the interlock is on AND a key is armed. Consume it atomically. No
         // logging happens before the write, so the reply stays in-slot.
         const uint8_t *ack = jandy::ACK_PRESENCE;
-        uint8_t keyack[jandy::ACK_PRESENCE_LEN];
+        size_t ack_len = jandy::ACK_PRESENCE_LEN;
+        uint8_t keyack[11];
         int sent_key = -1;
         portENTER_CRITICAL(&mux_);
         if (interlock_ && armed_key_ >= 0) {
@@ -78,12 +80,20 @@ void JandyAqualink::task_loop() {
         }
         portEXIT_CRITICAL(&mux_);
         if (sent_key >= 0) {
-          jandy::build_key_ack(static_cast<uint8_t>(sent_key), keyack);
-          ack = keyack;
+          ack_len = jandy::build_ack_wire(jandy::ACK_ALLB_SIM, static_cast<uint8_t>(sent_key), keyack,
+                                           sizeof(keyack));
+          if (ack_len == 0) {
+            ESP_LOGE(TAG, "keypress REFUSED: ACK wire encoding failed (key=0x%02X)", sent_key);
+            ack = jandy::ACK_PRESENCE;
+            ack_len = jandy::ACK_PRESENCE_LEN;
+            sent_key = -1;
+          } else {
+            ack = keyack;
+          }
         }
 
         int64_t t0 = esp_timer_get_time();
-        uart_write_bytes(JANDY_UART, reinterpret_cast<const char *>(ack), jandy::ACK_PRESENCE_LEN);
+        uart_write_bytes(JANDY_UART, reinterpret_cast<const char *>(ack), ack_len);
         uint32_t dt = static_cast<uint32_t>(esp_timer_get_time() - t0);
         portENTER_CRITICAL(&mux_);
         frames_++;
@@ -94,8 +104,8 @@ void JandyAqualink::task_loop() {
         portEXIT_CRITICAL(&mux_);
 
         if (sent_key >= 0) {
-          ESP_LOGW(TAG, "SENT KEY 0x%02X in ACK %02X %02X %02X %02X %02X %02X %02X %02X %02X (reply %u us)",
-                   sent_key, ack[0], ack[1], ack[2], ack[3], ack[4], ack[5], ack[6], ack[7], ack[8], dt);
+          ESP_LOGW(TAG, "SENT KEY 0x%02X in ACK (%u bytes, reply %u us)", sent_key,
+                   static_cast<unsigned>(ack_len), dt);
         }
         observe_frame(f);  // after the reply, never delays it
       } else if (iaq_presence_ && f.dest() == iaq_addr_) {
@@ -324,18 +334,31 @@ void JandyAqualink::arm_key(uint8_t key) {
     ESP_LOGW(TAG, "keypress REFUSED: key 0x%02X is not a display-only nav key", key);
     return;
   }
-  uint8_t ack[jandy::ACK_PRESENCE_LEN];
-  jandy::build_key_ack(key, ack);
-  if (ack[5] == 0x10 || ack[6] == 0x10) {  // would need wire stuffing; refuse
-    ESP_LOGW(TAG, "keypress REFUSED: ack for 0x%02X contains a DLE byte", key);
-    return;
-  }
   portENTER_CRITICAL(&mux_);
   armed_key_ = key;
   portEXIT_CRITICAL(&mux_);
   ESP_LOGW(TAG, "ARMED key 0x%02X -> sends ACK %02X %02X %02X %02X %02X %02X %02X %02X %02X on next poll",
            key, ack[0], ack[1], ack[2], ack[3], ack[4], ack[5], ack[6], ack[7], ack[8]);
 }
+
+void JandyAqualink::arm_aux_key_(uint8_t key, const char *name) {
+  if (!interlock_) {
+    ESP_LOGW(TAG, "%s REFUSED: safety interlock is OFF", name);
+    return;
+  }
+  if (!jandy::is_direct_aux_key(key)) {
+    ESP_LOGE(TAG, "%s REFUSED: key 0x%02X is not an approved AUX key", name, key);
+    return;
+  }
+  portENTER_CRITICAL(&mux_);
+  armed_key_ = key;
+  portEXIT_CRITICAL(&mux_);
+  ESP_LOGW(TAG, "%s: armed direct AllButton key 0x%02X", name, key);
+}
+
+void JandyAqualink::press_aux2() { arm_aux_key_(jandy::KEY_AUX2, "AUX2"); }
+
+void JandyAqualink::press_aux6() { arm_aux_key_(jandy::KEY_AUX6, "AUX6"); }
 
 void JandyAqualink::set_iaq_presence(bool on) {
   portENTER_CRITICAL(&mux_);
@@ -958,6 +981,15 @@ void JandyAqualink::log_iaq_frame(const jandy::Frame &f) {
 // binary broadcast frames instead.
 void JandyAqualink::observe_frame(const jandy::Frame &f) {
   reader_.feed(f);
+  swg_reader_.feed(f);
+  const auto &swg = swg_reader_.state;
+  if (swg.has_percent || swg.has_ppm || swg.has_status) {
+    portENTER_CRITICAL(&mux_);
+    if (swg.has_percent) swg_percent_ = swg.percent;
+    if (swg.has_ppm) swg_ppm_ = swg.ppm;
+    if (swg.has_status) swg_status_ = swg.status;
+    portEXIT_CRITICAL(&mux_);
+  }
 
   // Promiscuous bus capture: log every non-poll frame raw so we can record a real
   // iAqualink's schedule read/write conversation. Gated off by default (verbose).
@@ -1095,7 +1127,7 @@ void JandyAqualink::dump_observations() {
 
 void JandyAqualink::loop() {
   uint32_t polls, errors, latency, frames, iaq;
-  int air, pool, spa, rpm, watts;
+  int air, pool, spa, rpm, watts, swg_ppm, swg_percent, swg_status;
   portENTER_CRITICAL(&mux_);
   polls = acks_sent_;
   errors = bad_cksum_;
@@ -1107,6 +1139,9 @@ void JandyAqualink::loop() {
   spa = t_spa_;
   rpm = iaq_rpm_;
   watts = iaq_watts_;
+  swg_ppm = swg_ppm_;
+  swg_percent = swg_percent_;
+  swg_status = swg_status_;
   portEXIT_CRITICAL(&mux_);
 
   if (air_temp_sensor_ && air != -999 && air != pub_air_) {
@@ -1128,6 +1163,31 @@ void JandyAqualink::loop() {
   if (pump_watts_sensor_ && watts != -1 && watts != pub_watts_) {
     pump_watts_sensor_->publish_state(watts);
     pub_watts_ = watts;
+  }
+  if (salt_level_sensor_ && swg_ppm >= 0 && swg_ppm != pub_swg_ppm_) {
+    salt_level_sensor_->publish_state(swg_ppm);
+    pub_swg_ppm_ = swg_ppm;
+  }
+  if (salt_chlorinator_output_sensor_ && swg_percent >= 0 && swg_percent != pub_swg_percent_) {
+    salt_chlorinator_output_sensor_->publish_state(swg_percent);
+    pub_swg_percent_ = swg_percent;
+  }
+  if (salt_chlorinator_status_ts_ && swg_status >= 0 && swg_status != pub_swg_status_) {
+    char status[16];
+    const char *name = jandy::swg_status_name(static_cast<uint8_t>(swg_status));
+    if (std::strcmp(name, "unknown") == 0)
+      snprintf(status, sizeof(status), "unknown_0x%02x", static_cast<unsigned>(swg_status));
+    else
+      snprintf(status, sizeof(status), "%s", name);
+    salt_chlorinator_status_ts_->publish_state(status);
+    pub_swg_status_ = swg_status;
+  }
+  if (salt_chlorinator_generating_bs_ && swg_status >= 0 && swg_percent >= 0) {
+    int generating = swg_status == 0 && swg_percent > 0;
+    if (generating != pub_swg_generating_) {
+      salt_chlorinator_generating_bs_->publish_state(generating != 0);
+      pub_swg_generating_ = generating;
+    }
   }
 
   {
