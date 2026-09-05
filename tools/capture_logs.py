@@ -8,21 +8,34 @@ lines; this client fails earlier still, with SocketClosedAPIError during the
 noise handshake. Every clean capture on 2026-09-04/05 happened while HA was down
 for an update.
 
-ROOT CAUSE NOT ESTABLISHED. Ruled out on 2026-09-05, each with evidence:
+The device serves ONE API client at a time in practice, despite max_connections
+defaulting to 5 on esp32. Home Assistant holds it.
 
-- Connection limit. `max_connections` defaults to 5 on esp32, not 1.
+Ruled out on 2026-09-05, each with evidence, so do not re-check these:
+
+- Connection limit config. The default is 5, not 1.
 - Log level / volume. Subscribing at WARN, which filters on the device and
-  suppresses the ~46-line census burst, fails the same way. So the earlier
-  `max_send_queue` overflow theory is WRONG.
-- Stale sockets. A 45 s settle before retrying changed nothing.
-- Bad key. The PSK loads as a valid 44-char base64 string.
+  suppresses the ~46-line census burst, fails identically. The max_send_queue
+  overflow theory is WRONG.
+- Long uptime. A 13-minute-old device refuses a second client just the same.
+- Stale sockets, and a bad key. A 45 s settle changed nothing; the PSK is a
+  valid 44-char base64 string.
+- Hammering. Repeated failed handshakes are harmless; HA stayed healthy through
+  many of them.
 
-What is left is device-side resource exhaustion when a second client attaches.
-Unproven. Do not repeat the four checks above; start from free heap.
+*** DO NOT DISABLE THE BRIDGE'S HA INTEGRATION ENTRY TO FREE THE SLOT. ***
+On 2026-09-05 that dropped HA's connection and the device never reclaimed the
+slot. Nothing could reconnect, re-enabling and reload_config_entry both failed,
+and recovery needed a physical power cycle at the pad with the pool brain down
+for ~25 minutes.
 
-USE: run this during a window when HA is not connected to the bridge, which for
-now means disabling the bridge's HA integration entry for the capture. Put the
-pool brain on `timer.pool_manual_hold` first, since its entities go unavailable.
+The only known-good window is HA being FULLY STOPPED, which releases the slot
+cleanly; that is how every successful capture on 2026-09-04/05 happened.
+
+This is a firmware-level blocker for Phase 2, which needs many capture sessions.
+Fix the device side first: a second log path that does not use the API (MQTT
+logging, or serial on a spare UART, noting `logger: baud_rate: 0` currently
+disables serial), or find why a second API client cannot be served.
 
 The level argument is still worth having: WARN gives exactly the frames Phase 2
 needs (`SNIFF d=0x.. c=0x..`, `SENT KEY`, `SENT IAQ KEY`, `STATUS CHANGE`)
