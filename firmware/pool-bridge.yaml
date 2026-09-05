@@ -45,7 +45,7 @@ logger:
 
 external_components:
   # Point this at the component repo. refresh: 0s forces a re-pull each compile.
-  - source: github://4pBdhJoZ3Xy3reVvBoU9C3YPzyXDDU/esphome-jandy-aqualink
+  - source: github://wcarty/esphome-jandy-aqualink
     refresh: 0s
 
 # The Jandy keypad-presence component. Owns the RS485 UART directly and replies
