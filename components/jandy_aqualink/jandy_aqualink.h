@@ -86,11 +86,19 @@ class JandyAqualink : public Component {
   // iAqualink presence (via iaq_press) and idempotent: refuses if already in spa
   // mode. Sends exactly that one keycode.
   void request_spa_mode();
+  bool spa_mode_on() const { return cs_spa_ == 1; }
+  void set_spa_mode(bool on);
 
   // Press one allowlisted iAqualink home-page equipment button (filter pump,
   // spa, or pool light). Gated by the master interlock, iAqualink presence, and
   // the allowlist, which excludes the heaters. Sends exactly one key.
   void iaq_press(uint8_t key);
+  bool filter_pump_on() const { return cs_pump_ == 1; }
+  bool cleaner_on() const { return cs_cleaner_ == 1; }
+  bool air_blower_on() const { return cs_blower_ == 1; }
+  void set_filter_pump(bool on);
+  void set_cleaner(bool on);
+  void set_air_blower(bool on);
 
   // Send one global navigation key on the iAqualink path to walk pages during a
   // read-only survey. Gated by the master interlock + iAqualink presence + the
@@ -122,6 +130,10 @@ class JandyAqualink : public Component {
   // re-check the gate, send ONE keycode on HOME). Toggles the panel's heat enable;
   // the panel then runs the thermostat to the setpoint. One write-sequence at a time.
   void press_heater(uint8_t keycode);
+  bool pool_heat_on() const { return he_pool_ == 1; }
+  bool spa_heat_on() const { return he_spa_ == 1; }
+  void set_pool_heat(bool on);
+  void set_spa_heat(bool on);
 
   // SURVEY-ONLY (Phase 2 setpoint route discovery): send ONE keycode, but ONLY if
   // the decoder confirms the panel is on expect_page. Gated by interlock + presence
@@ -154,6 +166,7 @@ class JandyAqualink : public Component {
   void advance_swg_sequence_();
   void send_swg_set_(uint8_t percent);
   void arm_aux_key_(uint8_t key, const char *name);
+  void set_tracked_toggle_(bool on, int8_t current, uint8_t key, const char *name);
 
   int tx_pin_{19};
   int rx_pin_{22};

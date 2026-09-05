@@ -270,6 +270,75 @@ switch:
     turn_off_action:
       - lambda: "id(jandy_comp).set_scheduler_armed(false);"
 
+  # These mirror confirmed panel state. A requested state only presses a panel
+  # toggle when needed, preventing a repeated tap from inverting a circuit.
+  - platform: template
+    name: "Pool / Spa Mode"
+    id: pool_spa_mode_control
+    icon: "mdi:hot-tub"
+    lambda: "return id(jandy_comp).spa_mode_on();"
+    turn_on_action:
+      - lambda: "id(jandy_comp).set_spa_mode(true);"
+    turn_off_action:
+      - lambda: "id(jandy_comp).set_spa_mode(false);"
+    web_server:
+      sorting_group_id: pool_automation
+  - platform: template
+    name: "Filter Pump"
+    id: filter_pump_control
+    icon: "mdi:pump"
+    lambda: "return id(jandy_comp).filter_pump_on();"
+    turn_on_action:
+      - lambda: "id(jandy_comp).set_filter_pump(true);"
+    turn_off_action:
+      - lambda: "id(jandy_comp).set_filter_pump(false);"
+    web_server:
+      sorting_group_id: pool_automation
+  - platform: template
+    name: "Cleaner"
+    id: cleaner_control
+    icon: "mdi:robot-vacuum"
+    lambda: "return id(jandy_comp).cleaner_on();"
+    turn_on_action:
+      - lambda: "id(jandy_comp).set_cleaner(true);"
+    turn_off_action:
+      - lambda: "id(jandy_comp).set_cleaner(false);"
+    web_server:
+      sorting_group_id: pool_automation
+  - platform: template
+    name: "Air Blower"
+    id: air_blower_control
+    icon: "mdi:weather-windy"
+    lambda: "return id(jandy_comp).air_blower_on();"
+    turn_on_action:
+      - lambda: "id(jandy_comp).set_air_blower(true);"
+    turn_off_action:
+      - lambda: "id(jandy_comp).set_air_blower(false);"
+    web_server:
+      sorting_group_id: pool_automation
+  - platform: template
+    name: "Pool Heat"
+    id: pool_heat_control
+    icon: "mdi:radiator"
+    lambda: "return id(jandy_comp).pool_heat_on();"
+    turn_on_action:
+      - lambda: "id(jandy_comp).set_pool_heat(true);"
+    turn_off_action:
+      - lambda: "id(jandy_comp).set_pool_heat(false);"
+    web_server:
+      sorting_group_id: pool_automation
+  - platform: template
+    name: "Spa Heat"
+    id: spa_heat_control
+    icon: "mdi:fire"
+    lambda: "return id(jandy_comp).spa_heat_on();"
+    turn_on_action:
+      - lambda: "id(jandy_comp).set_spa_heat(true);"
+    turn_off_action:
+      - lambda: "id(jandy_comp).set_spa_heat(false);"
+    web_server:
+      sorting_group_id: pool_automation
+
 button:
   # Remote reboot. NOT PRESENT ON THE DEVICE AS OF 2026-09-05, which is why the
   # only recovery from the long-uptime wedge is a physical trip to the pad.
@@ -331,36 +400,8 @@ button:
     on_press:
       - lambda: "id(jandy_comp).press_aux6();"
 
-  # iAqualink control: switch the panel from spa mode to pool mode by pressing
-  # the Spa toggle (0x12). Gated: needs the interlock on, iAqualink presence on,
-  # and the panel currently in spa mode. Sends only 0x12, so it cannot reach Spa
-  # Drain or Spa Fill. Reversible (press Spa again to go back).
-  - platform: template
-    name: "Switch to Pool Mode"
-    icon: "mdi:pool"
-    web_server:
-      sorting_group_id: pool_automation
-    on_press:
-      - lambda: "id(jandy_comp).request_pool_mode();"
-  # Mirror of Switch to Pool Mode for the other direction (pool -> spa). Gated by
-  # the interlock + presence; refuses if already in spa. Sends only the Spa toggle.
-  - platform: template
-    name: "Switch to Spa Mode"
-    icon: "mdi:hot-tub"
-    web_server:
-      sorting_group_id: pool_automation
-    on_press:
-      - lambda: "id(jandy_comp).request_spa_mode();"
-
-  # iAqualink equipment toggles (gated by interlock + iAqualink presence + the
-  # allowlist). The heater buttons are deliberately not exposed.
-  - platform: template
-    name: "Filter Pump"
-    icon: "mdi:pump"
-    web_server:
-      sorting_group_id: pool_automation
-    on_press:
-      - lambda: "id(jandy_comp).iaq_press(0x11);"   # home button 0 = Filter Pump
+  # These circuits do not expose reliable state feedback, so they remain
+  # one-shot controls instead of showing a potentially incorrect ON/OFF state.
   - platform: template
     name: "Pool Light"
     icon: "mdi:lightbulb"
@@ -368,20 +409,6 @@ button:
       sorting_group_id: pool_automation
     on_press:
       - lambda: "id(jandy_comp).iaq_press(0x17);"   # home button 6 = Pool Light
-  - platform: template
-    name: "Cleaner"
-    icon: "mdi:robot-vacuum"
-    web_server:
-      sorting_group_id: pool_automation
-    on_press:
-      - lambda: "id(jandy_comp).iaq_press(0x15);"   # home button 4 = Cleaner
-  - platform: template
-    name: "Air Blower"
-    icon: "mdi:weather-windy"
-    web_server:
-      sorting_group_id: pool_automation
-    on_press:
-      - lambda: "id(jandy_comp).iaq_press(0x16);"   # home button 5 = Air Blower
 
   # DEVICES-page toggles (gated by interlock + iAqualink presence + the
   # device-toggle allowlist; each navigates to DEVICES and confirms the page
@@ -405,26 +432,6 @@ button:
     icon: "mdi:sprinkler"
     on_press:
       - lambda: "id(jandy_comp).press_device_toggle(0x1E);"   # DEVICES slot 13 = Sprinklers (legacy pool-cooling, controller removed)
-
-  # Heaters (HIGHEST-STAKES; gated by interlock + presence + a HOME-page-only guard;
-  # Spa Heat additionally refuses unless the panel is in spa mode). These are on/off
-  # enables; once enabled the panel maintains the target. Temperature setpoints are a
-  # follow-up build (Phase 2). The heater keycodes were excluded from every allowlist
-  # until now.
-  - platform: template
-    name: "Pool Heat"
-    icon: "mdi:radiator"
-    web_server:
-      sorting_group_id: pool_automation
-    on_press:
-      - lambda: "id(jandy_comp).press_heater(0x13);"   # HOME slot 2 = Pool Heat
-  - platform: template
-    name: "Spa Heat"
-    icon: "mdi:hot-tub"
-    web_server:
-      sorting_group_id: pool_automation
-    on_press:
-      - lambda: "id(jandy_comp).press_heater(0x14);"   # HOME slot 3 = Spa Heat (spa mode only)
 
   # SURVEY (Phase 2 setpoint route discovery; gated + one-shot + page-confirmed).
   # Navigate first (Other Devices -> DEVICES, or Menu -> MENU), confirm the page in

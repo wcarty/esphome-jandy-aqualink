@@ -426,6 +426,30 @@ void JandyAqualink::iaq_press(uint8_t key) {
   ESP_LOGW(TAG, "ARMED iAq key 0x%02X -> sent on next iAqualink poll (one press)", key);
 }
 
+void JandyAqualink::set_tracked_toggle_(bool on, int8_t current, uint8_t key, const char *name) {
+  if (current < 0) {
+    ESP_LOGW(TAG, "%s REFUSED: current state has not been observed yet", name);
+    return;
+  }
+  if ((current != 0) == on) {
+    ESP_LOGI(TAG, "%s already %s", name, on ? "ON" : "OFF");
+    return;
+  }
+  iaq_press(key);
+}
+
+void JandyAqualink::set_filter_pump(bool on) {
+  set_tracked_toggle_(on, cs_pump_, jandy::KEY_IAQ_FILTER_PUMP, "Filter Pump");
+}
+
+void JandyAqualink::set_cleaner(bool on) {
+  set_tracked_toggle_(on, cs_cleaner_, jandy::KEY_IAQ_CLEANER, "Cleaner");
+}
+
+void JandyAqualink::set_air_blower(bool on) {
+  set_tracked_toggle_(on, cs_blower_, jandy::KEY_IAQ_AIR_BLOWER, "Air Blower");
+}
+
 void JandyAqualink::iaq_nav(uint8_t key) {
   if (!interlock_) {
     ESP_LOGW(TAG, "iaq nav REFUSED: safety interlock is OFF (key=0x%02X)", key);
@@ -555,6 +579,30 @@ void JandyAqualink::press_heater(uint8_t keycode) {
   iaq_heater_step_ = 1;  // kick off the sequence on the next poll
   portEXIT_CRITICAL(&mux_);
   ESP_LOGW(TAG, "heater: start sequence -> key 0x%02X", keycode);
+}
+
+void JandyAqualink::set_pool_heat(bool on) {
+  if (he_pool_ < 0) {
+    ESP_LOGW(TAG, "Pool Heat REFUSED: current state has not been observed yet");
+    return;
+  }
+  if ((he_pool_ != 0) == on) {
+    ESP_LOGI(TAG, "Pool Heat already %s", on ? "ON" : "OFF");
+    return;
+  }
+  press_heater(jandy::KEY_IAQ_HOME_POOL_HEAT);
+}
+
+void JandyAqualink::set_spa_heat(bool on) {
+  if (he_spa_ < 0) {
+    ESP_LOGW(TAG, "Spa Heat REFUSED: current state has not been observed yet");
+    return;
+  }
+  if ((he_spa_ != 0) == on) {
+    ESP_LOGI(TAG, "Spa Heat already %s", on ? "ON" : "OFF");
+    return;
+  }
+  press_heater(jandy::KEY_IAQ_HOME_SPA_HEAT);
 }
 
 void JandyAqualink::survey_press(uint8_t key, uint8_t expect_page) {
@@ -1056,6 +1104,13 @@ void JandyAqualink::request_spa_mode() {
     return;
   }
   iaq_press(jandy::KEY_IAQ_SPA);  // 0x12 Spa toggle -> spa on -> Spa Mode
+}
+
+void JandyAqualink::set_spa_mode(bool on) {
+  if (on)
+    request_spa_mode();
+  else
+    request_pool_mode();
 }
 
 // Log iAqualink frames the panel sends our 0x33 slot, skipping the bare poll
