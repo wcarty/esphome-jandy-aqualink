@@ -48,9 +48,26 @@ logger:
 # can operate pool equipment once the master interlock is enabled.
 web_server:
   version: 3
+  css_include: pool-dashboard.css
   auth:
     username: !secret pool_bridge_web_username
     password: !secret pool_bridge_web_password
+  sorting_groups:
+    - id: pool_overview
+      name: Pool Overview
+      sorting_weight: 10
+    - id: pool_chemistry
+      name: Water Chemistry
+      sorting_weight: 20
+    - id: pool_equipment
+      name: Equipment Status
+      sorting_weight: 30
+    - id: pool_automation
+      name: Automation & Controls
+      sorting_weight: 40
+    - id: pool_diagnostics
+      name: Diagnostics
+      sorting_weight: 90
 
 external_components:
   # This private repository is the component source. refresh: 0s fetches the
@@ -71,59 +88,99 @@ jandy_aqualink:
   keypad_address: 0x08   # a free AllButton keypad slot (0x08-0x0B); see README
   polls_answered:
     name: Pool Keypad Polls Answered
+    web_server:
+      sorting_group_id: pool_diagnostics
   reply_latency:
     name: Pool Keypad Reply Latency
+    web_server:
+      sorting_group_id: pool_diagnostics
   checksum_errors:
     name: Pool Bus Checksum Errors
+    web_server:
+      sorting_group_id: pool_diagnostics
   # Temperatures decoded from the iAqualink home page (needs the iAqualink
   # Presence switch on). Pool vs spa depends on the panel's current valve mode.
   air_temp:
     name: Pool Air Temp
+    web_server:
+      sorting_group_id: pool_overview
   pool_temp:
     name: Pool Water Temp
+    web_server:
+      sorting_group_id: pool_overview
   spa_temp:
     name: Spa Water Temp
+    web_server:
+      sorting_group_id: pool_overview
   # Pump RPM/watts, read from the iAqualink STATUS page on demand (see the Read
   # Pump Speed button). The panel shows either temps or pump speed at a time, so
   # this updates when the Status page is viewed, not continuously.
   pump_rpm:
     name: Pool Pump Speed
+    web_server:
+      sorting_group_id: pool_overview
   pump_watts:
     name: Pool Pump Watts
+    web_server:
+      sorting_group_id: pool_overview
   # AquaPure salt-water chlorinator readings are passively decoded from its
   # normal RS485 poll/reply traffic. They work without iAqualink presence and
   # do not send any chlorinator command.
   salt_level:
     name: Pool Salt Level
+    web_server:
+      sorting_group_id: pool_chemistry
   salt_chlorinator_output:
     name: Pool Chlorinator Output
+    web_server:
+      sorting_group_id: pool_chemistry
   salt_chlorinator_status:
     name: Pool Chlorinator Status
+    web_server:
+      sorting_group_id: pool_chemistry
   salt_chlorinator_generating:
     name: Pool Chlorinator Generating
+    web_server:
+      sorting_group_id: pool_chemistry
   # Jandy TrueSense chemistry readings, passively decoded from its normal
   # RS485 chemistry frames. No chemistry-control command is sent.
   ph:
     name: Pool pH
+    web_server:
+      sorting_group_id: pool_chemistry
   orp:
     name: Pool ORP
+    web_server:
+      sorting_group_id: pool_chemistry
   # Equipment on/off decoded from the panel's keypad status bitmap (the inert
   # AllButton seat, address 0x08). Read-only; updates continuously as the panel
   # changes equipment. Bit positions pinned live 2026-06-01 (see docs/).
   spa_mode:
     name: Pool Spa Mode
+    web_server:
+      sorting_group_id: pool_equipment
   air_blower:
     name: Pool Air Blower (status)
+    web_server:
+      sorting_group_id: pool_equipment
   filter_pump_state:
     name: Pool Filter Pump (status)
+    web_server:
+      sorting_group_id: pool_equipment
   cleaner_state:
     name: Pool Cleaner (status)
+    web_server:
+      sorting_group_id: pool_equipment
   # Heater on/off, decoded from the HOME-page heater button states (Session 9:
   # state 3 = enabled). Read-only; updates from the HOME enumeration plus deltas.
   pool_heat_enabled:
     name: Pool Heat (enabled)
+    web_server:
+      sorting_group_id: pool_equipment
   spa_heat_enabled:
     name: Spa Heat (enabled)
+    web_server:
+      sorting_group_id: pool_equipment
 
 # --- Phase 2 gated keypress controls ---
 # Reading temperatures needs the panel to redraw its display, which it only does
@@ -146,6 +203,8 @@ switch:
     icon: "mdi:gesture-tap-button"
     optimistic: true
     restore_mode: ALWAYS_OFF
+    web_server:
+      sorting_group_id: pool_automation
     turn_on_action:
       - lambda: "id(jandy_comp).set_interlock(true);"
     turn_off_action:
@@ -160,6 +219,8 @@ switch:
     icon: "mdi:thermometer-lines"
     optimistic: true
     restore_mode: RESTORE_DEFAULT_OFF   # was ALWAYS_OFF; temps keep reading after a reboot
+    web_server:
+      sorting_group_id: pool_automation
     turn_on_action:
       - lambda: "id(jandy_comp).set_iaq_presence(true);"
     turn_off_action:
@@ -173,6 +234,8 @@ switch:
     icon: "mdi:timer-refresh"
     optimistic: true
     restore_mode: RESTORE_DEFAULT_OFF   # resumes the watch after an overnight reboot
+    web_server:
+      sorting_group_id: pool_automation
 
   # Promiscuous bus capture: when on, log every non-poll frame on the bus raw, so
   # we can record how a real iAqualink reads/writes the panel's schedule. Read-only
@@ -199,6 +262,8 @@ switch:
     icon: "mdi:robot"
     optimistic: true
     restore_mode: RESTORE_DEFAULT_OFF
+    web_server:
+      sorting_group_id: pool_automation
     turn_on_action:
       - lambda: "id(jandy_comp).set_scheduler_armed(true);"
     turn_off_action:
@@ -253,11 +318,15 @@ button:
   - platform: template
     name: "Pool Color Wheel"
     icon: "mdi:palette"
+    web_server:
+      sorting_group_id: pool_automation
     on_press:
       - lambda: "id(jandy_comp).press_aux2();"
   - platform: template
     name: "Pool Stenner Dosing Pump"
     icon: "mdi:pump"
+    web_server:
+      sorting_group_id: pool_automation
     on_press:
       - lambda: "id(jandy_comp).press_aux6();"
 
@@ -268,6 +337,8 @@ button:
   - platform: template
     name: "Switch to Pool Mode"
     icon: "mdi:pool"
+    web_server:
+      sorting_group_id: pool_automation
     on_press:
       - lambda: "id(jandy_comp).request_pool_mode();"
   # Mirror of Switch to Pool Mode for the other direction (pool -> spa). Gated by
@@ -275,6 +346,8 @@ button:
   - platform: template
     name: "Switch to Spa Mode"
     icon: "mdi:hot-tub"
+    web_server:
+      sorting_group_id: pool_automation
     on_press:
       - lambda: "id(jandy_comp).request_spa_mode();"
 
@@ -283,21 +356,29 @@ button:
   - platform: template
     name: "Filter Pump"
     icon: "mdi:pump"
+    web_server:
+      sorting_group_id: pool_automation
     on_press:
       - lambda: "id(jandy_comp).iaq_press(0x11);"   # home button 0 = Filter Pump
   - platform: template
     name: "Pool Light"
     icon: "mdi:lightbulb"
+    web_server:
+      sorting_group_id: pool_automation
     on_press:
       - lambda: "id(jandy_comp).iaq_press(0x17);"   # home button 6 = Pool Light
   - platform: template
     name: "Cleaner"
     icon: "mdi:robot-vacuum"
+    web_server:
+      sorting_group_id: pool_automation
     on_press:
       - lambda: "id(jandy_comp).iaq_press(0x15);"   # home button 4 = Cleaner
   - platform: template
     name: "Air Blower"
     icon: "mdi:weather-windy"
+    web_server:
+      sorting_group_id: pool_automation
     on_press:
       - lambda: "id(jandy_comp).iaq_press(0x16);"   # home button 5 = Air Blower
 
@@ -332,11 +413,15 @@ button:
   - platform: template
     name: "Pool Heat"
     icon: "mdi:radiator"
+    web_server:
+      sorting_group_id: pool_automation
     on_press:
       - lambda: "id(jandy_comp).press_heater(0x13);"   # HOME slot 2 = Pool Heat
   - platform: template
     name: "Spa Heat"
     icon: "mdi:hot-tub"
+    web_server:
+      sorting_group_id: pool_automation
     on_press:
       - lambda: "id(jandy_comp).press_heater(0x14);"   # HOME slot 3 = Spa Heat (spa mode only)
 
@@ -444,6 +529,8 @@ number:
     step: 5
     mode: slider
     optimistic: true
+    web_server:
+      sorting_group_id: pool_automation
     set_action:
       - lambda: "id(jandy_comp).set_pump_rpm((uint16_t) x);"
   # Heater temperature setpoints (Phase 2). Each starts the page-confirmed sequence
@@ -461,6 +548,8 @@ number:
     step: 1
     mode: box
     optimistic: true
+    web_server:
+      sorting_group_id: pool_automation
     set_action:
       - lambda: "id(jandy_comp).set_heater_setpoint(false, (uint16_t) x);"
   - platform: template
@@ -473,6 +562,8 @@ number:
     step: 1
     mode: box
     optimistic: true
+    web_server:
+      sorting_group_id: pool_automation
     set_action:
       - lambda: "id(jandy_comp).set_heater_setpoint(true, (uint16_t) x);"
   # AquaPure pool output. The page-confirmed write requires both iAqualink
@@ -487,6 +578,8 @@ number:
     step: 1
     mode: box
     optimistic: true
+    web_server:
+      sorting_group_id: pool_automation
     set_action:
       - lambda: "id(jandy_comp).set_swg_percent((uint16_t) x);"
 

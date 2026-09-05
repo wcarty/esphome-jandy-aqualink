@@ -48,7 +48,8 @@ This drives live equipment, so writes are conservative by construction:
 
 The control surface is the **encrypted Home Assistant native API** plus OTA. The
 example configuration also enables ESPHome's local web interface with required,
-secret-backed authentication.
+secret-backed authentication. It groups pool overview, water chemistry,
+equipment, automation, and diagnostics into a themed dashboard.
 
 ## Why this is interesting
 
@@ -111,6 +112,10 @@ The example config creates every supported entity and is the best starting point
 for a complete installation. Add `pool_bridge_web_username` and
 `pool_bridge_web_password` to your ESPHome `secrets.yaml` before compiling; they
 protect the local web interface.
+
+Open `http://<pool-bridge-ip>/` on your trusted local network to use the
+dashboard. The master interlock remains off after every restart, including when
+using the web interface.
 
 ## Picking a keypad address
 

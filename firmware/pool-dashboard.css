@@ -1,0 +1,39 @@
+:root {
+  --primary-color: #0a6d8f;
+  --accent-color: #38c7d9;
+  --background-color: #071e2b;
+  --card-background-color: #0d2b3b;
+  --text-color: #effaff;
+}
+
+body {
+  background:
+    radial-gradient(circle at top right, #0e526c 0%, transparent 35%),
+    linear-gradient(160deg, #071e2b 0%, #0b3447 100%);
+  min-height: 100vh;
+}
+
+header,
+.header {
+  background: linear-gradient(110deg, #07536e, #0d8ead) !important;
+  box-shadow: 0 4px 18px rgba(0, 0, 0, 0.3);
+}
+
+main,
+#main {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding-bottom: 2rem;
+}
+
+ha-card,
+esphome-entity-card {
+  border: 1px solid rgba(113, 224, 241, 0.22);
+  border-radius: 16px !important;
+  box-shadow: 0 8px 22px rgba(0, 0, 0, 0.18);
+}
+
+h1,
+h2 {
+  letter-spacing: 0.02em;
+}
