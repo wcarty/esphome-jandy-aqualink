@@ -460,6 +460,20 @@ number:
     optimistic: true
     set_action:
       - lambda: "id(jandy_comp).set_heater_setpoint(true, (uint16_t) x);"
+  # AquaPure pool output. The page-confirmed write requires both iAqualink
+  # Presence and the master interlock; use box mode to avoid writes while dragging.
+  - platform: template
+    name: "Pool Chlorinator Output"
+    id: pool_chlorinator_output
+    icon: "mdi:water-check"
+    unit_of_measurement: "%"
+    min_value: 0
+    max_value: 100
+    step: 1
+    mode: box
+    optimistic: true
+    set_action:
+      - lambda: "id(jandy_comp).set_swg_percent((uint16_t) x);"
 
 # When Auto-Refresh is on AND iAqualink presence is on, read the pump speed every
 # 15 minutes. read_pump_speed() is view-only (STATUS then auto-HOME); it actuates

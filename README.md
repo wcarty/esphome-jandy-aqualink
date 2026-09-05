@@ -24,7 +24,7 @@ pump on the same bus, on an M5Stack Atom Lite (about $20 of hardware).
 | --- | --- |
 | Monitoring | Pool, spa, and air temperature; equipment state; pump RPM and watts; AquaPure output, salt level, and faults |
 | Everyday control | Filter pump, cleaner, lights, blower, pool/spa mode, AUX2 color wheel, and AUX6 Stenner dosing pump |
-| Advanced control | Pump RPM presets or slider; pool and spa heater enable and setpoints |
+| Advanced control | Pump RPM presets or slider; pool and spa heater enable and setpoints; AquaPure pool output |
 | Safety | Master interlock off after every restart; iAqualink presence and page checks protect iAqualink writes |
 
 Home Assistant can run it as a **scheduler**: a narrow, restart-surviving permission
@@ -124,8 +124,9 @@ controller had long since died.
 - Setpoint writes are confirmed by equipment behavior, not by a readback. The panel
   does not echo the target back to this controller, so a write is verified by the
   heater firing or settling, not by reading the number back.
-- Salt chlorinator readings are read-only. The component does not change output,
-  boost, or any other AquaPure setting.
+- The AquaPure pool-output control is page-confirmed and requires both the master
+  interlock and iAqualink Presence. Boost and other AquaPure settings are not
+  changed by this component.
 - The heater-enabled status decode is unreliable on the test panel; trust the panel's
   own heat indicator over that sensor.
 

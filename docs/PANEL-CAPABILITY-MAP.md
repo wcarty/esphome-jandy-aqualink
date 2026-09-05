@@ -40,7 +40,7 @@ MENU 0x0f, ONETOUCH 0x4d, COLOR_LIGHT 0x48. These were not walked this session.
 | Pump model | STATUS2 message line | text | "Intelliflo VS 1" |
 | Pump RPM | STATUS2 line "    RPM: NNNN" | int after "RPM:" | 2750 |
 | Pump watts | STATUS2 line "  Watts: NNNN" | int after "Watts:" | 1263 |
-| AquaPure output | Passive command to SWG address `0x50`-`0x53` | percent | supported |
+| AquaPure output | Passive command to SWG address `0x50`-`0x53`; SET_SWG value path | percent | read and set |
 | Salt level | Passive AquaPure poll reply | ppm | supported |
 | AquaPure status | Passive AquaPure poll reply | on / fault text | supported |
 

@@ -223,6 +223,7 @@ void IaqReader::feed(const Frame &f) {
   uint8_t cmd = f.cmd();
   if (cmd == 0x23) {  // CMD_IAQ_PAGE_START: page type in data[0]
     page_type_ = f.data_len() >= 1 ? f.data()[0] : 0;
+    if (page_type_ == IAQ_PAGE_SET_SWG) swg_pool_key_ = -1;
     for (int i = 0; i < MAX_LINES; ++i) present_[i] = false;
     for (int i = 0; i < MAX_LINES; ++i) btn_present_[i] = false;
   } else if (cmd == 0x25) {  // CMD_IAQ_PAGE_MSG: data[0]=index, data[1:]=text+NUL
@@ -242,6 +243,21 @@ void IaqReader::feed(const Frame &f) {
       if (idx >= 0 && idx < MAX_LINES) {
         btn_state_[idx] = f.data()[1];
         btn_present_[idx] = true;
+        // AquaLinkD discovers SET_SWG's Pool button from this packet rather
+        // than assuming a grid position. Preserve that property: a key is
+        // usable only after its label and page have both been observed.
+        if (page_type_ == IAQ_PAGE_SET_SWG && idx < 15 && f.data_len() >= 5) {
+          char name[LINE_LEN] = {};
+          int o = 0;
+          for (size_t i = 4; i < f.data_len() && o < LINE_LEN - 1; ++i) {
+            uint8_t b = f.data()[i];
+            if (b == 0) break;
+            if (b >= 'a' && b <= 'z') b = static_cast<uint8_t>(b - ('a' - 'A'));
+            if (b >= 'A' && b <= 'Z') name[o++] = static_cast<char>(b);
+          }
+          if (std::strcmp(name, "POOL") == 0)
+            swg_pool_key_ = f.data()[1] == 0x0D ? f.data()[2] : static_cast<uint8_t>(0x11 + idx);
+        }
       }
     }
   } else if (cmd == 0x28) {  // CMD_IAQ_PAGE_END
@@ -365,6 +381,22 @@ size_t build_vsp_set_frame(uint16_t rpm, uint8_t *out, size_t out_cap) {
   out[i++] = DLE;
   out[i++] = ETX;
   return i;  // 24
+}
+
+size_t build_swg_set_frame(uint8_t percent, uint8_t *out, size_t out_cap) {
+  if (out_cap < 24) return 0;
+  uint8_t field[5];
+  num2iaqt_rpm(percent, field);
+  size_t i = 0;
+  out[i++] = DLE; out[i++] = STX; out[i++] = 0x00; out[i++] = 0x24; out[i++] = 0x31;
+  for (int k = 0; k < 5; ++k) out[i++] = field[k];
+  for (int k = 0; k < 11; ++k) out[i++] = 0xcd;
+  uint32_t s = 0;
+  for (size_t k = 0; k < i; ++k) s += out[k];
+  out[i++] = static_cast<uint8_t>(s & 0xFF);
+  out[i++] = DLE;
+  out[i++] = ETX;
+  return i;
 }
 
 bool vsp_adjust_allowed(uint8_t current_page) { return current_page == IAQ_PAGE_DEVICES; }
@@ -591,6 +623,22 @@ bool selftest(std::string &detail) {
         !settemp_write_allowed(IAQ_PAGE_HOME))
       ok++;
     else detail += " TEMPGATE";
+  }
+
+  // AquaPure output uses the same iAqualink value transport as the VSP, without
+  // RPM clamping. AquaLinkD's queue_iaqt_control_command uses this format.
+  {
+    total++;
+    const uint8_t exp[] = {0x10,0x02,0x00,0x24,0x31,0x36,0x35,0x00,0x00,0x00,
+                           0xcd,0xcd,0xcd,0xcd,0xcd,0xcd,0xcd,0xcd,0xcd,0xcd,0xcd,
+                           0xA1,0x10,0x03};
+    uint8_t out[32];
+    size_t n = build_swg_set_frame(65, out, sizeof(out));
+    bool pass = n == sizeof(exp) && swg_percent_check(101) == 100;
+    for (size_t i = 0; pass && i < n; ++i)
+      if (out[i] != exp[i]) pass = false;
+    if (pass) ok++;
+    else detail += " SWGSET";
   }
 
   // iAqualink HOME-page decode: spa=88, air=156 from real captured frames.

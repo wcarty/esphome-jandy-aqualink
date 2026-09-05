@@ -132,6 +132,9 @@ class JandyAqualink : public Component {
   // page-confirmed sequence (HOME -> DEVICES -> heat item -> SET_TEMP -> 0x80 ->
   // 0x24 value -> HOME). The 0x24 frame is sent ONLY on SET_TEMP. One at a time.
   void set_heater_setpoint(bool is_spa, uint16_t temp);
+  // Set AquaPure's pool output from 0 to 100 percent. The page-confirmed
+  // sequence follows AquaLinkD's MENU -> SET_SWG -> Pool -> value handshake.
+  void set_swg_percent(uint16_t percent);
 
  protected:
   static void task_trampoline(void *arg);
@@ -146,6 +149,8 @@ class JandyAqualink : public Component {
   void send_vsp_set_(uint16_t rpm);  // core-1: transmit the 0x24 value frame
   void advance_settemp_sequence_();  // core-1: drive the setpoint sequence on each poll
   void send_settemp_set_(uint16_t temp);  // core-1: transmit the 0x24 setpoint value frame
+  void advance_swg_sequence_();
+  void send_swg_set_(uint8_t percent);
   void arm_aux_key_(uint8_t key, const char *name);
 
   int tx_pin_{19};
@@ -262,6 +267,12 @@ class JandyAqualink : public Component {
   volatile bool iaq_settemp_page_seen_{false};
   volatile int iaq_settemp_wait_{0};
   volatile int iaq_settemp_retries_{0};
+
+  // AquaPure pool-output sequence. Its Pool key is discovered from the SET_SWG
+  // page button label, never assumed from a grid position.
+  volatile int iaq_swg_step_{0};
+  volatile int iaq_swg_percent_{0};
+  volatile int iaq_swg_wait_{0};
 
   // Passive decode + bus census (core-1 task only; not shared). reader_
   // accumulates temperatures from the panel's broadcast frames; census_ records

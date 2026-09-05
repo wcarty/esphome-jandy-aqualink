@@ -212,6 +212,32 @@ void JandyAqualink::task_loop() {
           continue;  // this 0x33 frame fully handled by the survey one-shot
         }
 
+        // The AquaPure sequence owns the iAq reply while active. It only sends
+        // the MENU AquaPure key on MENU, the discovered Pool key on SET_SWG, and
+        // the value frame after the panel's 0x31 control grant.
+        int swg_step;
+        portENTER_CRITICAL(&mux_);
+        swg_step = iaq_swg_step_;
+        portEXIT_CRITICAL(&mux_);
+        if (swg_step != 0) {
+          if (f.cmd() == jandy::CMD_IAQ_CTRL_READY && swg_step == 5) {
+            send_swg_set_(static_cast<uint8_t>(iaq_swg_percent_));
+            portENTER_CRITICAL(&mux_);
+            iaq_swg_step_ = 6;
+            portEXIT_CRITICAL(&mux_);
+          } else if (f.cmd() == 0x30) {
+            advance_swg_sequence_();
+          } else {
+            send_iaq_ack_(0x00);
+          }
+          iaq_reader_.feed(f);
+          portENTER_CRITICAL(&mux_);
+          iaq_current_page_ = iaq_reader_.current_page();
+          frames_++;
+          portEXIT_CRITICAL(&mux_);
+          continue;
+        }
+
         // The setpoint sequence owns the iAq reply while active (mutually exclusive
         // with the other write-sequences). The 0x24 value frame goes out on 0x31.
         int settemp_step;
@@ -321,6 +347,7 @@ void JandyAqualink::set_interlock(bool on) {
     iaq_survey_page_ = -1;
     iaq_settemp_step_ = 0;   // and any in-progress setpoint sequence
     iaq_settemp_key_ = -1;
+    iaq_swg_step_ = 0;
     iaq_return_home_ = false;
   }
   portEXIT_CRITICAL(&mux_);
@@ -457,7 +484,7 @@ void JandyAqualink::set_pump_rpm(uint16_t rpm) {
   }
   uint16_t clamped = jandy::rpm_check(rpm);
   portENTER_CRITICAL(&mux_);
-  if (iaq_toggle_step_ != 0 || iaq_heater_step_ != 0 || iaq_settemp_step_ != 0 || iaq_survey_key_ >= 0) {  // one write-sequence at a time
+  if (iaq_toggle_step_ != 0 || iaq_heater_step_ != 0 || iaq_settemp_step_ != 0 || iaq_swg_step_ != 0 || iaq_survey_key_ >= 0) {  // one write-sequence at a time
     portEXIT_CRITICAL(&mux_);
     ESP_LOGW(TAG, "set_pump_rpm REFUSED: a device-toggle sequence is in progress (rpm=%u)", clamped);
     return;
@@ -482,7 +509,7 @@ void JandyAqualink::press_device_toggle(uint8_t keycode) {
     return;
   }
   portENTER_CRITICAL(&mux_);
-  if (iaq_set_step_ != 0 || iaq_toggle_step_ != 0 || iaq_heater_step_ != 0 || iaq_settemp_step_ != 0 || iaq_survey_key_ >= 0) {  // one write-sequence at a time
+  if (iaq_set_step_ != 0 || iaq_toggle_step_ != 0 || iaq_heater_step_ != 0 || iaq_settemp_step_ != 0 || iaq_swg_step_ != 0 || iaq_survey_key_ >= 0) {  // one write-sequence at a time
     portEXIT_CRITICAL(&mux_);
     ESP_LOGW(TAG, "device toggle REFUSED: another sequence is in progress (key=0x%02X)", keycode);
     return;
@@ -540,7 +567,7 @@ void JandyAqualink::survey_press(uint8_t key, uint8_t expect_page) {
     return;
   }
   portENTER_CRITICAL(&mux_);
-  if (iaq_set_step_ != 0 || iaq_toggle_step_ != 0 || iaq_heater_step_ != 0 || iaq_settemp_step_ != 0) {
+  if (iaq_set_step_ != 0 || iaq_toggle_step_ != 0 || iaq_heater_step_ != 0 || iaq_settemp_step_ != 0 || iaq_swg_step_ != 0) {
     portEXIT_CRITICAL(&mux_);
     ESP_LOGW(TAG, "survey REFUSED: another sequence is in progress (key=0x%02X)", key);
     return;
@@ -579,7 +606,7 @@ void JandyAqualink::set_heater_setpoint(bool is_spa, uint16_t temp) {
   int clamped = is_spa ? jandy::spa_setpoint_check(temp) : jandy::pool_setpoint_check(temp);
   uint8_t key = is_spa ? jandy::KEY_IAQ_DEVICES_SPA_HEAT : jandy::KEY_IAQ_DEVICES_POOL_HEAT;
   portENTER_CRITICAL(&mux_);
-  if (iaq_set_step_ != 0 || iaq_toggle_step_ != 0 || iaq_heater_step_ != 0 || iaq_settemp_step_ != 0 || iaq_survey_key_ >= 0) {
+  if (iaq_set_step_ != 0 || iaq_toggle_step_ != 0 || iaq_heater_step_ != 0 || iaq_settemp_step_ != 0 || iaq_swg_step_ != 0 || iaq_survey_key_ >= 0) {
     portEXIT_CRITICAL(&mux_);
     ESP_LOGW(TAG, "setpoint REFUSED: another sequence is in progress (%s)", is_spa ? "spa" : "pool");
     return;
@@ -600,6 +627,124 @@ void JandyAqualink::send_settemp_set_(uint16_t temp) {
   size_t n = jandy::build_settemp_frame(temp, out, sizeof(out));
   uart_write_bytes(JANDY_UART, reinterpret_cast<const char *>(out), n);
   ESP_LOGW(TAG, "setpoint value frame sent: %uF (%u bytes)", temp, static_cast<unsigned>(n));
+}
+
+void JandyAqualink::set_swg_percent(uint16_t percent) {
+  if (!interlock_ || !iaq_presence_) {
+    ESP_LOGW(TAG, "AquaPure output REFUSED: interlock and iAqualink presence must both be ON");
+    return;
+  }
+  uint8_t target = jandy::swg_percent_check(percent);
+  portENTER_CRITICAL(&mux_);
+  if (iaq_set_step_ != 0 || iaq_toggle_step_ != 0 || iaq_heater_step_ != 0 ||
+      iaq_settemp_step_ != 0 || iaq_swg_step_ != 0 || iaq_survey_key_ >= 0) {
+    portEXIT_CRITICAL(&mux_);
+    ESP_LOGW(TAG, "AquaPure output REFUSED: another write sequence is in progress");
+    return;
+  }
+  iaq_swg_percent_ = target;
+  iaq_swg_wait_ = 0;
+  iaq_swg_step_ = 1;
+  portEXIT_CRITICAL(&mux_);
+  ESP_LOGW(TAG, "AquaPure output: start pool sequence -> %u%%", static_cast<unsigned>(target));
+}
+
+void JandyAqualink::send_swg_set_(uint8_t percent) {
+  uint8_t out[32];
+  size_t n = jandy::build_swg_set_frame(percent, out, sizeof(out));
+  uart_write_bytes(JANDY_UART, reinterpret_cast<const char *>(out), n);
+  ESP_LOGW(TAG, "AquaPure output value frame sent: %u%%", static_cast<unsigned>(percent));
+}
+
+void JandyAqualink::advance_swg_sequence_() {
+  if (!interlock_ || !iaq_presence_) {
+    ESP_LOGW(TAG, "AquaPure output aborted: interlock or iAqualink presence is OFF");
+    iaq_swg_step_ = 0;
+    send_iaq_ack_(0x00);
+    return;
+  }
+  int page = iaq_reader_.current_page();
+  switch (iaq_swg_step_) {
+    case 1:
+      send_iaq_ack_(jandy::KEY_IAQT_MENU);
+      iaq_swg_step_ = 2;
+      break;
+    case 2:
+      if (page == jandy::IAQ_PAGE_MENU) {
+        send_iaq_ack_(jandy::KEY_IAQT_SET_AQUAPURE);
+        iaq_swg_step_ = 3;
+        iaq_swg_wait_ = 0;
+      } else if (++iaq_swg_wait_ >= 20) {
+        ESP_LOGW(TAG, "AquaPure output aborted: MENU did not open");
+        iaq_swg_step_ = 0;
+        send_iaq_ack_(jandy::KEY_IAQT_HOME);
+      } else {
+        send_iaq_ack_(jandy::KEY_IAQT_MENU);
+      }
+      break;
+    case 3: {
+      if (page == jandy::IAQ_PAGE_SET_SWG) {
+        int key = iaq_reader_.swg_pool_key();
+        if (key >= 0) {
+          send_iaq_ack_(static_cast<uint8_t>(key));
+          iaq_swg_step_ = 4;
+        } else if (++iaq_swg_wait_ >= 20) {
+          ESP_LOGW(TAG, "AquaPure output aborted: SET_SWG page did not provide a Pool button");
+          iaq_swg_step_ = 0;
+          send_iaq_ack_(jandy::KEY_IAQT_HOME);
+        } else {
+          send_iaq_ack_(0x00);
+        }
+      } else if (page == jandy::IAQ_PAGE_MENU) {
+        if (++iaq_swg_wait_ >= 20) {
+          ESP_LOGW(TAG, "AquaPure output aborted: SET_SWG did not open");
+          iaq_swg_step_ = 0;
+          send_iaq_ack_(jandy::KEY_IAQT_HOME);
+        } else {
+          send_iaq_ack_(jandy::KEY_IAQT_SET_AQUAPURE);
+        }
+      } else {
+        if (++iaq_swg_wait_ >= 20) {
+          ESP_LOGW(TAG, "AquaPure output aborted: SET_SWG did not open");
+          iaq_swg_step_ = 0;
+          send_iaq_ack_(jandy::KEY_IAQT_HOME);
+        } else {
+          send_iaq_ack_(0x00);
+        }
+      }
+      break;
+    }
+    case 4:
+      if (page == jandy::IAQ_PAGE_SET_SWG) {
+        send_iaq_ack_(0x80);
+        iaq_swg_step_ = 5;
+      } else {
+        ESP_LOGW(TAG, "AquaPure output aborted: left SET_SWG before control request");
+        iaq_swg_step_ = 0;
+        send_iaq_ack_(jandy::KEY_IAQT_HOME);
+      }
+      break;
+    case 5:
+      send_iaq_ack_(0x00);
+      break;
+    case 6:
+      send_iaq_ack_(jandy::KEY_IAQT_HOME);
+      iaq_swg_step_ = 7;
+      break;
+    case 7:
+      if (page == jandy::IAQ_PAGE_HOME) {
+        ESP_LOGW(TAG, "AquaPure output sequence complete (%d%%)", iaq_swg_percent_);
+        iaq_swg_step_ = 0;
+        send_iaq_ack_(0x00);
+      } else {
+        send_iaq_ack_(jandy::KEY_IAQT_HOME);
+      }
+      break;
+    default:
+      iaq_swg_step_ = 0;
+      send_iaq_ack_(0x00);
+      break;
+  }
 }
 
 // core-1: advance one step of the gated pump-set sequence. Called from the iAq

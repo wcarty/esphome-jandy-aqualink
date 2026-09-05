@@ -40,12 +40,14 @@ static constexpr uint8_t CMD_IAQ_CTRL_READY = 0x31;  // panel grants the value-s
 // sequence by the page the panel is currently showing.
 static constexpr uint8_t IAQ_PAGE_HOME = 0x01;
 static constexpr uint8_t IAQ_PAGE_SET_VSP = 0x1E;
+static constexpr uint8_t IAQ_PAGE_SET_SWG = 0x30;
 static constexpr uint8_t IAQ_PAGE_STATUS2 = 0x2A;
 static constexpr uint8_t IAQ_PAGE_DEVICES = 0x36;
 
 // VSP-adjust keycode on the DEVICES page. Same byte as the home Pool Heat key;
 // page-scoped, named separately so it is never confused with a heater press.
 static constexpr uint8_t KEY_IAQ_DEVICES_VSP_ADJ = 0x13;
+static constexpr uint8_t KEY_IAQT_SET_AQUAPURE = 0x19;  // MENU fixed item 9
 
 // DEVICES-page toggle keycodes (page-scoped; keycode = 0x11 + slot): slot 8 Spa
 // Light, slot 12 Extra Aux, slot 13 Sprinklers. Allowlisted for press_device_toggle
@@ -139,6 +141,8 @@ inline void build_key_ack(uint8_t key, uint8_t out[9]) { build_ack(ACK_ALLB_SIM,
 uint16_t rpm_check(uint16_t rpm);                 // clamp 600-3450, snap to 5
 void num2iaqt_rpm(uint16_t rpm, uint8_t out[5]);  // ASCII digits, NUL-padded to 5
 size_t build_vsp_set_frame(uint16_t rpm, uint8_t *out, size_t out_cap);  // 0x24 frame; returns 24
+size_t build_swg_set_frame(uint8_t percent, uint8_t *out, size_t out_cap);
+inline uint8_t swg_percent_check(uint16_t percent) { return percent > 100 ? 100 : static_cast<uint8_t>(percent); }
 bool vsp_adjust_allowed(uint8_t current_page);    // true only on DEVICES (0x36)
 
 // iAqualink Touch presence ACK (inert): 10 02 00 01 00 00 13 10 03. Replying with
@@ -285,6 +289,7 @@ class IaqReader {
   bool pool_heat_enabled() const { return pool_heat_enabled_; }
   bool has_spa_heat() const { return has_spa_heat_; }
   bool spa_heat_enabled() const { return spa_heat_enabled_; }
+  int swg_pool_key() const { return swg_pool_key_; }
 
  private:
   void commit_home();
@@ -298,6 +303,7 @@ class IaqReader {
   static constexpr int BTN_POOL_HEAT = 2, BTN_SPA_HEAT = 3;
   bool pool_heat_enabled_ = false, spa_heat_enabled_ = false;
   bool has_pool_heat_ = false, has_spa_heat_ = false;
+  int swg_pool_key_ = -1;
   uint8_t btn_state_[MAX_LINES] = {0};
   bool btn_present_[MAX_LINES] = {false};
   bool present_[MAX_LINES] = {false};
