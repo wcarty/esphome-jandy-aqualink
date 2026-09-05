@@ -98,6 +98,68 @@
     input[type="range"] { accent-color: #41d7e3; }
   `;
 
+  const switchStyles = `
+    :host {
+      display: inline-flex;
+      min-height: 40px;
+      min-width: 64px;
+      align-items: center;
+      justify-content: center;
+    }
+    .sw label { display: inline-flex; padding: 5px; }
+    .lever {
+      background: #203e4c !important;
+      border: 1px solid rgba(154, 220, 229, 0.2);
+      box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.45);
+      height: 30px !important;
+      overflow: hidden;
+      width: 58px !important;
+    }
+    .lever:before {
+      background: transparent !important;
+      color: #9fbac4;
+      content: "OFF" !important;
+      font-family: Inter, ui-sans-serif, system-ui, sans-serif;
+      font-size: 9px;
+      font-weight: 800;
+      height: 30px !important;
+      left: 28px !important;
+      letter-spacing: 0.07em;
+      line-height: 30px;
+      text-align: center;
+      top: 0 !important;
+      transform: none !important;
+      width: 30px !important;
+    }
+    .lever:after {
+      background: linear-gradient(145deg, #faffff, #b8d5dc) !important;
+      box-shadow: 0 2px 7px rgba(0, 0, 0, 0.45) !important;
+      height: 24px !important;
+      left: 3px !important;
+      top: 2px !important;
+      width: 24px !important;
+    }
+    input[type="checkbox"]:checked + .lever {
+      background: linear-gradient(90deg, #087e8e, #20bdc8) !important;
+      border-color: rgba(174, 250, 252, 0.76);
+      box-shadow: 0 0 14px rgba(54, 224, 232, 0.45), inset 0 1px 3px rgba(0, 0, 0, 0.22);
+    }
+    input[type="checkbox"]:checked + .lever:before {
+      color: #f5ffff;
+      content: "ON" !important;
+      left: 1px !important;
+    }
+    input[type="checkbox"]:checked + .lever:after { left: 31px !important; }
+    input[type="checkbox"]:focus-visible + .lever {
+      outline: 2px solid #b9fbff;
+      outline-offset: 3px;
+    }
+    input[type="checkbox"][disabled] + .lever {
+      filter: grayscale(1);
+      opacity: 0.5;
+    }
+  `;
+
   const installStyles = (element, id, styles) => {
     const root = element.shadowRoot;
     if (!root || root.querySelector(`#${id}`)) return;
@@ -107,18 +169,36 @@
     root.append(style);
   };
 
+  const observedRoots = new WeakSet();
+  const observe = (root) => {
+    if (observedRoots.has(root)) return;
+    new MutationObserver(decorate).observe(root, { childList: true, subtree: true });
+    observedRoots.add(root);
+  };
+
   const decorate = () => {
     const app = document.querySelector("esp-app");
     if (!app) return;
     installStyles(app, "pool-dashboard-app-theme", appStyles);
     const appRoot = app.shadowRoot;
     if (!appRoot) return;
+    observe(appRoot);
     appRoot.querySelectorAll("esp-entity-table").forEach((table) => {
       installStyles(table, "pool-dashboard-entities-theme", entityStyles);
+      const tableRoot = table.shadowRoot;
+      if (!tableRoot) return;
+      observe(tableRoot);
+      tableRoot.querySelectorAll("esp-switch").forEach((toggle) => {
+        installStyles(toggle, "pool-dashboard-switch-theme", switchStyles);
+      });
     });
   };
 
-  customElements.whenDefined("esp-app").then(() => {
+  Promise.all([
+    customElements.whenDefined("esp-app"),
+    customElements.whenDefined("esp-entity-table"),
+    customElements.whenDefined("esp-switch"),
+  ]).then(() => {
     decorate();
     new MutationObserver(decorate).observe(document.body, { childList: true, subtree: true });
   });
