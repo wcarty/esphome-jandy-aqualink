@@ -1,10 +1,15 @@
-"""Display-text layer for the AllButton keypad (cmd 0x25).
+"""Display-text layer for cmd 0x25.
 
-The panel writes the LCD a line at a time: a label ("Air Temp") then a value
-("167"). We decode each line to clean ASCII and pair a label with the value
-line that immediately follows it, the same approach AqualinkD uses to read the
-keypad. The RS-485 bus interleaves device polls between those two writes, so
-the pairer must ignore non-display frames without losing the pending label.
+On this panel every captured display frame is addressed to the iAqualink slot
+0x33, not to an AllButton keypad at 0x08-0x0B. That distinction decides whether
+AqualinkD's menu-walk program reader can be ported here at all, so DisplayLine
+carries the destination address and callers must not assume it.
+
+The panel writes a line at a time: a label ("Air Temp") then a value ("167").
+We decode each line to clean ASCII and pair a label with the value line that
+immediately follows it. The bus interleaves device polls between those two
+writes, so the pairer must ignore non-display frames without losing the pending
+label.
 """
 
 import re
@@ -26,14 +31,18 @@ _LEADING_INT = re.compile(r"\s*(-?\d+)")
 
 
 class DisplayLine:
-    __slots__ = ("line", "text")
+    __slots__ = ("line", "text", "dest")
 
-    def __init__(self, line: int, text: str):
+    def __init__(self, line: int, text: str, dest: int = 0x33):
         self.line = line
         self.text = text
+        self.dest = dest
 
     def __repr__(self):
-        return f"DisplayLine(line=0x{self.line:02X}, text={self.text!r})"
+        return (
+            f"DisplayLine(dest=0x{self.dest:02X}, "
+            f"line=0x{self.line:02X}, text={self.text!r})"
+        )
 
 
 def decode_display(frame: Frame):
@@ -46,7 +55,7 @@ def decode_display(frame: Frame):
     if frame.cmd != CMD_DISPLAY or len(frame.data) < 1:
         return None
     text = "".join(chr(b) for b in frame.data[1:] if 0x20 <= b <= 0x7E)
-    return DisplayLine(frame.data[0], text)
+    return DisplayLine(frame.data[0], text, frame.dest)
 
 
 def _normalize(text: str) -> str:
