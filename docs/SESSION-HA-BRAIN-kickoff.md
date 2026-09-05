@@ -1,4 +1,9 @@
-# Session kickoff: the pool HA brain (HA-as-scheduler + filtration failsafe)
+# 🗃️ Session kickoff: the pool HA brain (HA-as-scheduler + filtration failsafe)
+
+> [!NOTE]
+> **Historical engineering record.** This point-in-time session handoff may not
+> describe the current implementation. See the [📚 Documentation guide](README.md)
+> and [🏠 current README](../README.md) for current references.
 
 Paste-ready brief for a fresh session. This is the project endgame: make Home
 Assistant the smart scheduler for the pool, driving the panel through the ESP

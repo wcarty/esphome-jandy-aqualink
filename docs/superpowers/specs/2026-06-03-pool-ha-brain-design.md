@@ -1,4 +1,9 @@
-# Pool HA Brain: Home Assistant as scheduler, panel as failsafe
+# 🧠 Pool HA Brain: Home Assistant as scheduler, panel as failsafe
+
+> [!NOTE]
+> **Historical engineering record.** This design specification may not describe
+> the current implementation. See the [📚 Documentation guide](../../README.md)
+> and [🏠 current README](../../../README.md) for current references.
 
 Status: APPROVED in brainstorm with the founder 2026-06-03. Ready to turn into an
 implementation plan (writing-plans next). Builds on origin/master HEAD `3025c6f`

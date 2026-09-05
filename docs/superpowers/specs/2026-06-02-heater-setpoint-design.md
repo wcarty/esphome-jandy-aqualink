@@ -1,4 +1,9 @@
-# Session 9 (Phase 2) design: heater temperature setpoint + status sensors
+# 🧠 Session 9 (Phase 2) design: heater temperature setpoint + status sensors
+
+> [!NOTE]
+> **Historical engineering record.** This design specification may not describe
+> the current implementation. See the [📚 Documentation guide](../../README.md)
+> and [🏠 current README](../../../README.md) for current references.
 
 - Date: 2026-06-02
 - Status: SHIPPED + founder-live-tested 2026-06-03 (origin/master `a2039e2`). The DEVICES -> SET_TEMP route and the `0x80`/`0x24` value-set both worked live: pool physically fired at 90; spa heated and the panel auto-offed spa heat at its 94 setpoint, below the 104 ceiling. Live quirks (detail in memory `project_pool_controller_phase2.md`, "Session 9 Phase 2 LIVE"): SET_TEMP renders blind to our 0x33 emulation (no setpoint readback), the heat-item screen-open is ~50% flaky (auto-retry shipped), and the `*_heat_enabled` sensors decode unreliably. (Originally: approved by founder 2026-06-02 brainstorm.)

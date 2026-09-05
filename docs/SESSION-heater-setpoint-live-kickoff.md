@@ -1,4 +1,9 @@
-# Session kickoff: heater setpoint LIVE deploy + survey + setpoint build (Phase 2 continuation)
+# 🗃️ Session kickoff: heater setpoint LIVE deploy + survey + setpoint build (Phase 2 continuation)
+
+> [!NOTE]
+> **Historical engineering record.** This point-in-time session handoff may not
+> describe the current implementation. See the [📚 Documentation guide](README.md)
+> and [🏠 current README](../README.md) for current references.
 
 Paste-ready brief for a fresh session. The desk-side code is already BUILT, tested, and
 reviewed; this session is the founder-at-the-pad live work. Self-contained.

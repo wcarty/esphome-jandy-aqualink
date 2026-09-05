@@ -1,4 +1,9 @@
-# Bus-driven wipe feasibility: iAquaLink Touch MENU route
+# 🚫 Bus-driven wipe feasibility: iAquaLink Touch MENU route
+
+> [!NOTE]
+> **Historical engineering record.** This feasibility investigation may not
+> describe the current implementation. See the [📚 Documentation guide](README.md)
+> and [🏠 current README](../README.md) for current references.
 
 Date: 2026-06-01
 Status: CONFIRMED INFEASIBLE via live experiment (see Confirmation). Pivot to the iAquaLink-app method.

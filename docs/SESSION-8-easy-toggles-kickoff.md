@@ -1,4 +1,9 @@
-# Session 8 kickoff: easy DEVICES-page toggles (spa light, aux, sprinklers)
+# 🗃️ Session 8 kickoff: easy DEVICES-page toggles (spa light, aux, sprinklers)
+
+> [!NOTE]
+> **Historical engineering record.** This point-in-time session handoff may not
+> describe the current implementation. See the [📚 Documentation guide](README.md)
+> and [🏠 current README](../README.md) for current references.
 
 Paste-ready brief. Self-contained. This is the low-stakes confidence-builder the
 founder chose to do BEFORE heaters, because it exercises the page-context safety

@@ -1,4 +1,9 @@
-# Set the filter pump speed (RPM) from Home Assistant
+# 🧠 Set the filter pump speed (RPM) from Home Assistant
+
+> [!NOTE]
+> **Historical engineering record.** This design specification may not describe
+> the current implementation. See the [📚 Documentation guide](../../README.md)
+> and [🏠 current README](../../../README.md) for current references.
 
 Date: 2026-05-31
 Status: Approved direction (brainstorm complete), pre-implementation

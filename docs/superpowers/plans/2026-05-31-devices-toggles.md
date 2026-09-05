@@ -1,4 +1,9 @@
-# DEVICES-Page Toggles Implementation Plan
+# 🛠️ DEVICES-Page Toggles Implementation Plan
+
+> [!NOTE]
+> **Historical engineering record.** This implementation plan may not describe
+> the current implementation. See the [📚 Documentation guide](../../README.md)
+> and [🏠 current README](../../../README.md) for current references.
 
 > **For agentic workers:** Execute INLINE (the deferred Task 5 drives live hardware).
 > Steps use checkbox (`- [ ]`) syntax. **IMPORTANT:** Tasks 1-4 are code/desk work with

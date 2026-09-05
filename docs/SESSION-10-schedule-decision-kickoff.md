@@ -1,4 +1,9 @@
-# Session 10 kickoff: deal with the panel's stored schedule
+# 🗃️ Session 10 kickoff: deal with the panel's stored schedule
+
+> [!NOTE]
+> **Historical engineering record.** This point-in-time session handoff may not
+> describe the current implementation. See the [📚 Documentation guide](README.md)
+> and [🏠 current README](../README.md) for current references.
 
 Paste-ready brief. Self-contained. This is the hardest and most uncertain
 remaining item, and it is GATED on the Session 7 watch data. Do Session 7 first;

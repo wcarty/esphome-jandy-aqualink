@@ -1,4 +1,9 @@
-# Session 3 kickoff: read temperatures by emulating the iAqualink controller (0x33)
+# 🗃️ Session 3 kickoff: read temperatures by emulating the iAqualink controller (0x33)
+
+> [!NOTE]
+> **Historical engineering record.** This point-in-time session handoff may not
+> describe the current implementation. See the [📚 Documentation guide](README.md)
+> and [🏠 current README](../README.md) for current references.
 
 ## The goal
 Read pool, spa, and air temperatures (and ideally setpoints) from the Jandy panel

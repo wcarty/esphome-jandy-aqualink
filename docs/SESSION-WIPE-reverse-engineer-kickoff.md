@@ -1,4 +1,9 @@
-# Session kickoff: reverse-engineer the panel program editor, then wipe all scheduling
+# 🗃️ Session kickoff: reverse-engineer the panel program editor, then wipe all scheduling
+
+> [!NOTE]
+> **Historical engineering record.** This point-in-time session handoff may not
+> describe the current implementation. See the [📚 Documentation guide](README.md)
+> and [🏠 current README](../README.md) for current references.
 
 Paste-ready brief for a fresh session. Self-contained. BRAINSTORM with the founder
 first, then a careful READ-ONLY spike before anything is deleted.

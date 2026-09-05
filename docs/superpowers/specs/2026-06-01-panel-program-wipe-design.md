@@ -1,4 +1,9 @@
-# Panel program wipe + handoff to Home Assistant: design
+# 🧠 Panel program wipe + handoff to Home Assistant: design
+
+> [!NOTE]
+> **Historical engineering record.** This design specification may not describe
+> the current implementation. See the [📚 Documentation guide](../../README.md)
+> and [🏠 current README](../../../README.md) for current references.
 
 - Date: 2026-06-01
 - Status: FALLBACK / safety net. After review, the founder PREFERS the bus

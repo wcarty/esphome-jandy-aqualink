@@ -1,4 +1,9 @@
-# Session kickoff: reconnect the iAquaLink 2.0 + map what it is doing (cloud/API deep dive)
+# 🗃️ Session kickoff: reconnect the iAquaLink 2.0 + map what it is doing (cloud/API deep dive)
+
+> [!NOTE]
+> **Historical engineering record.** This point-in-time session handoff may not
+> describe the current implementation. See the [📚 Documentation guide](README.md)
+> and [🏠 current README](../README.md) for current references.
 
 Paste-ready brief for a fresh session. Goal: bring the dead iAquaLink 2.0 back online,
 deep-dive the Jandy cloud/API to understand what the panel and cloud are actually

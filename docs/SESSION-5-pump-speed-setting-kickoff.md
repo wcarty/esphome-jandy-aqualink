@@ -1,4 +1,9 @@
-# Session 5 kickoff: SET the filter pump speed (RPM) from Home Assistant
+# 🗃️ Session 5 kickoff: SET the filter pump speed (RPM) from Home Assistant
+
+> [!NOTE]
+> **Historical engineering record.** This point-in-time session handoff may not
+> describe the current implementation. See the [📚 Documentation guide](README.md)
+> and [🏠 current README](../README.md) for current references.
 
 ## The goal
 Finish pump control: add the ability to CHANGE the filter pump's speed (RPM) from

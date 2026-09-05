@@ -1,4 +1,9 @@
-# Session kickoff: finish the pool controller (no iAquaLink)
+# 🗃️ Session kickoff: finish the pool controller (no iAquaLink)
+
+> [!NOTE]
+> **Historical engineering record.** This point-in-time session handoff may not
+> describe the current implementation. See the [📚 Documentation guide](README.md)
+> and [🏠 current README](../README.md) for current references.
 
 Paste-ready brief for a fresh session. Self-contained. Brainstorm before building.
 

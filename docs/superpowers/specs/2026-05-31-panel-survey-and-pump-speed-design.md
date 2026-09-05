@@ -1,4 +1,9 @@
-# Panel capability survey and pump speed reading
+# 🧠 Panel capability survey and pump speed reading
+
+> [!NOTE]
+> **Historical engineering record.** This design specification may not describe
+> the current implementation. See the [📚 Documentation guide](../../README.md)
+> and [🏠 current README](../../../README.md) for current references.
 
 Date: 2026-05-31
 Status: Approved direction, pre-implementation

@@ -1,4 +1,9 @@
-# Session 7 design: pump-speed auto-refresh + stored-schedule watch
+# 🧠 Session 7 design: pump-speed auto-refresh + stored-schedule watch
+
+> [!NOTE]
+> **Historical engineering record.** This design specification may not describe
+> the current implementation. See the [📚 Documentation guide](../../README.md)
+> and [🏠 current README](../../../README.md) for current references.
 
 - Date: 2026-05-31
 - Status: Approved by founder 2026-05-31. Ready for implementation plan.

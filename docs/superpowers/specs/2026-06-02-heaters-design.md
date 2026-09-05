@@ -1,4 +1,9 @@
-# Session 9 design: pool + spa heater control (on/off + temperature setpoint)
+# 🧠 Session 9 design: pool + spa heater control (on/off + temperature setpoint)
+
+> [!NOTE]
+> **Historical engineering record.** This design specification may not describe
+> the current implementation. See the [📚 Documentation guide](../../README.md)
+> and [🏠 current README](../../../README.md) for current references.
 
 - Date: 2026-06-02
 - Status: Approved by founder 2026-06-02 (brainstorm). Ready for implementation plan.

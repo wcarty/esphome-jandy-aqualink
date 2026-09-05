@@ -1,10 +1,27 @@
-# Roadmap
+# 🗺️ Roadmap
 
-> **Current build (2026-09-05):** The component now reads AquaPure salt output,
-> salt ppm, and faults passively, and provides interlock-gated direct controls
-> for AUX2 (color wheel) and AUX6 (Stenner dosing pump). Earlier sections are
-> retained as project history; use the README and capability map for the current
-> supported surface.
+> **Current reference for delivered features, known constraints, and planned
+> work.**
+>
+> **Current build (2026-09-05):** The component reads AquaPure output, salt,
+> faults, and TrueSense pH/ORP; provides state-aware equipment controls,
+> pump/heater setpoints, direct AUX2/AUX6 controls, and an authenticated
+> dashboard. Earlier sections are retained as project history; use the README
+> and capability map for the current supported surface.
+
+> [!IMPORTANT]
+> Current priorities: preserve the physical iAqualink controller's `0x33` slot,
+> capture AllButton traffic through the authenticated web log stream, then add
+> an AllButton-only AquaPure output/Boost path in
+> [issue #1](https://github.com/wcarty/esphome-jandy-aqualink/issues/1).
+
+> [🏠 Current README](../README.md) · [🧩 Capability map](PANEL-CAPABILITY-MAP.md) · [📚 Documentation guide](README.md)
+
+## 📜 Historical roadmap
+
+The sections below document the project history. Current behavior and constraints
+are summarized in the [README](../README.md) and
+[capability map](PANEL-CAPABILITY-MAP.md).
 
 ## v1 (done): keypad presence + health diagnostics
 
@@ -143,7 +160,7 @@ controls, with the panel's own stored schedule kept underneath as the hardware
 failsafe.
 
 The box gained a narrow "Pool Scheduler" permission (firmware `scheduler_armed`
-switch, `RESTORE_DEFAULT_OFF` so it self-resumes after a power blip). When on, it
+switch, now `ALWAYS_OFF` so it never self-resumes after a power blip). When on, it
 lets HA set pump speed and toggle the filter pump (`0x11`) and cleaner (`0x15`)
 WITHOUT the master interlock, scoped per-key by `is_scheduler_safe_key`. Every other
 write (heaters, spa, valves, blower, lights, DEVICES toggles) still requires the

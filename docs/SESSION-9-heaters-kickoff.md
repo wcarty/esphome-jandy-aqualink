@@ -1,4 +1,9 @@
-# Session 9 kickoff: heaters (pool + spa) on/off + temperature setpoint
+# 🗃️ Session 9 kickoff: heaters (pool + spa) on/off + temperature setpoint
+
+> [!NOTE]
+> **Historical engineering record.** This point-in-time session handoff may not
+> describe the current implementation. See the [📚 Documentation guide](README.md)
+> and [🏠 current README](../README.md) for current references.
 
 Paste-ready brief. Self-contained. Highest-stakes equipment, so it is LAST among
 the control builds and needs a careful founder-watched live test. The good news:

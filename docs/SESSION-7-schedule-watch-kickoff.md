@@ -1,4 +1,9 @@
-# Session 7 kickoff: pump-speed auto-refresh + stored-schedule watch
+# 🗃️ Session 7 kickoff: pump-speed auto-refresh + stored-schedule watch
+
+> [!NOTE]
+> **Historical engineering record.** This point-in-time session handoff may not
+> describe the current implementation. See the [📚 Documentation guide](README.md)
+> and [🏠 current README](../README.md) for current references.
 
 Paste-ready brief for the next session. Self-contained. Brainstorm the gating
 decision with the founder FIRST (it changes the safety model), then build.

@@ -1,4 +1,9 @@
-# Session 4 kickoff: add filter pump RPM (speed) control via iAqualink
+# 🗃️ Session 4 kickoff: add filter pump RPM (speed) control via iAqualink
+
+> [!NOTE]
+> **Historical engineering record.** This point-in-time session handoff may not
+> describe the current implementation. See the [📚 Documentation guide](README.md)
+> and [🏠 current README](../README.md) for current references.
 
 ## The goal
 Add control of the filter pump's speed (RPM) from Home Assistant, through the

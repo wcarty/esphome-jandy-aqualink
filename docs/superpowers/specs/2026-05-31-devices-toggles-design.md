@@ -1,4 +1,9 @@
-# Session 8 design: gated DEVICES-page toggles (Spa Light, Extra Aux, Sprinklers)
+# 🧠 Session 8 design: gated DEVICES-page toggles (Spa Light, Extra Aux, Sprinklers)
+
+> [!NOTE]
+> **Historical engineering record.** This design specification may not describe
+> the current implementation. See the [📚 Documentation guide](../../README.md)
+> and [🏠 current README](../../../README.md) for current references.
 
 - Date: 2026-05-31
 - Status: Approved by founder 2026-05-31. Ready for implementation plan. BUILD / FLASH / LIVE TEST DEFERRED to a later session (see Sequencing).

@@ -1,4 +1,9 @@
-# Heater On/Off Enables + SET_TEMP Survey Implementation Plan (Phase 1 of heaters)
+# 🛠️ Heater On/Off Enables + SET_TEMP Survey Implementation Plan (Phase 1 of heaters)
+
+> [!NOTE]
+> **Historical engineering record.** This implementation plan may not describe
+> the current implementation. See the [📚 Documentation guide](../../README.md)
+> and [🏠 current README](../../../README.md) for current references.
 
 > **For agentic workers:** REQUIRED SUB-SKILL: use superpowers:executing-plans (inline)
 > or superpowers:subagent-driven-development. Steps use checkbox (`- [ ]`) syntax.

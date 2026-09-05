@@ -1,4 +1,9 @@
-# Heater Temperature Setpoint (Phase 2 of heaters) Implementation Plan
+# 🛠️ Heater Temperature Setpoint (Phase 2 of heaters) Implementation Plan
+
+> [!NOTE]
+> **Historical engineering record.** This implementation plan may not describe
+> the current implementation. See the [📚 Documentation guide](../../README.md)
+> and [🏠 current README](../../../README.md) for current references.
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 > **IMPORTANT:** Tasks 1-8 are desk work (no device contact) and are fully specified now. Task 9 (deploy + founder-watched LIVE survey) and Task 11 (deploy + founder-watched LIVE setpoint test) drive REAL heater hardware and MUST have the founder watching at the pad/spa. Task 10 (the setpoint state machine) is written for the most-likely "equipment-page" route confirmed by the Task 9 survey; a short contingency note covers the MENU route.

@@ -1,4 +1,9 @@
-# Pump Auto-Refresh + Schedule Watch Implementation Plan
+# 🛠️ Pump Auto-Refresh + Schedule Watch Implementation Plan
+
+> [!NOTE]
+> **Historical engineering record.** This implementation plan may not describe
+> the current implementation. See the [📚 Documentation guide](../../README.md)
+> and [🏠 current README](../../../README.md) for current references.
 
 > **For agentic workers:** This plan drives LIVE pool hardware over the network and is
 > executed INLINE in this session (sequential build/flash/verify with live-log watching).

@@ -1,4 +1,9 @@
-# Session kickoff: re-online the iAquaLink, sniff the schedule, then wipe
+# 🗃️ Session kickoff: re-online the iAquaLink, sniff the schedule, then wipe
+
+> [!NOTE]
+> **Historical engineering record.** This point-in-time session handoff may not
+> describe the current implementation. See the [📚 Documentation guide](README.md)
+> and [🏠 current README](../README.md) for current references.
 
 Paste-ready brief for a fresh session. Self-contained. We do this one TOGETHER
 (founder at the pad + on the app; Claude drives the box, captures, and the cloud).

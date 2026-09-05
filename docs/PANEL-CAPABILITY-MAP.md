@@ -1,10 +1,20 @@
-# Pool Panel Capability Map
+# 🧩 Pool Panel Capability Map
 
-> **Current feature note (2026-09-05):** This page began as the 2026-05-31
-> read-only panel survey below. The component now also passively reads AquaPure
-> salt chlorinator output, salt level, and faults; it provides direct,
-> interlock-gated AUX2 and AUX6 controls. The slot map remains a snapshot of the
-> surveyed panel, not a universal layout.
+> **Current reference for this surveyed panel's supported readings, controls,
+> and protocol limits.**
+>
+> **Current feature note (2026-09-05):** The component passively reads AquaPure
+> output, salt level, and faults plus TrueSense pH/ORP; it provides state-aware
+> controls for tracked equipment, direct interlock-gated AUX2/AUX6 controls,
+> pump/heater setpoints, and an authenticated web dashboard. The slot map below
+> remains a snapshot of the surveyed panel, not a universal layout.
+
+> [!CAUTION]
+> The iAqualink `0x33` page controls—including AquaPure output and heater/pump
+> setpoints—must remain disabled when a physical iAqualink controller occupies
+> that address. Direct AUX2/AUX6 controls use the separate AllButton path.
+
+> [🏠 Current README](../README.md) · [📚 Documentation guide](README.md)
 
 Date: 2026-05-31 (survey snapshot)
 Source: live read-only survey of the AquaLink RS power center via the iAqualink
@@ -13,7 +23,7 @@ was view-only: no equipment, value, or commit button was pressed. Pump is a
 Pentair Intelliflo VS (variable speed). All values are as observed during the
 survey (pool mode, filter pump running).
 
-## Pages this panel exposes over iAqualink
+## 📜 Historical iAqualink survey snapshot
 
 | Page | Type | How reached | Contents |
 |---|---|---|---|
@@ -30,7 +40,7 @@ re-add presence (forces a fresh registration), then navigate.
 Reference (AqualinkD) also defines SET_VSP 0x1e, SET_TEMP 0x39, SET_SWG 0x30,
 MENU 0x0f, ONETOUCH 0x4d, COLOR_LIGHT 0x48. These were not walked this session.
 
-## Readable values
+## ✅ Current readings
 
 | Value | Source | Wire format | Observed |
 |---|---|---|---|
@@ -40,7 +50,7 @@ MENU 0x0f, ONETOUCH 0x4d, COLOR_LIGHT 0x48. These were not walked this session.
 | Pump model | STATUS2 message line | text | "Intelliflo VS 1" |
 | Pump RPM | STATUS2 line "    RPM: NNNN" | int after "RPM:" | 2750 |
 | Pump watts | STATUS2 line "  Watts: NNNN" | int after "Watts:" | 1263 |
-| AquaPure output | Passive command to SWG address `0x50`-`0x53`; SET_SWG value path | percent | read and set |
+| AquaPure output | Passive command to SWG address `0x50`-`0x53` | percent | read |
 | Salt level | Passive AquaPure poll reply | ppm | supported |
 | AquaPure status | Passive AquaPure poll reply | on / fault text | supported |
 | TrueSense pH | Passive chemistry frame tag `0x03` | pH | supported |
@@ -61,6 +71,18 @@ Notes:
 - Pump RPM changes on the pump's own schedule (observed 2750 RPM / 1263 W stepping
   to 1700 RPM / 293 W during the survey, with no input from us), which confirms
   the reading tracks the live pump.
+
+## 🎛️ Current controls
+
+| Control | Status | Requirement |
+| --- | :---: | --- |
+| Pool/spa, filter pump, cleaner, air blower | ✅ | Master interlock, iAqualink Presence, and free `0x33` slot |
+| Pool light | ✅ | Master interlock, iAqualink Presence, and free `0x33` slot |
+| Pool/spa heat and setpoints | ✅ | Master interlock, iAqualink Presence, and free `0x33` slot |
+| Pump RPM and presets | ✅ | Master interlock, iAqualink Presence, and free `0x33` slot |
+| AquaPure pool output | ✅ | Master interlock, iAqualink Presence, and free `0x33` slot |
+| AUX2 color wheel / AUX6 Stenner | ✅ | Master interlock; command state only |
+| AquaPure Boost | ⏳ | [Issue #1](https://github.com/wcarty/esphome-jandy-aqualink/issues/1): requires verified AllButton menu capture |
 
 ## Direct AllButton circuits
 

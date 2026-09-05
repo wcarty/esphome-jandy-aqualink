@@ -1,4 +1,9 @@
-# Spec: blower / spa-mode sniffer on the inert keypad seat
+# 🧠 Spec: blower / spa-mode sniffer on the inert keypad seat
+
+> [!NOTE]
+> **Historical engineering record.** This design specification may not describe
+> the current implementation. See the [📚 Documentation guide](../../README.md)
+> and [🏠 current README](../../../README.md) for current references.
 
 Date: 2026-06-01
 Status: approved (brainstorm), pre-implementation
