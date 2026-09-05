@@ -49,7 +49,8 @@ This drives live equipment, so writes are conservative by construction:
 The control surface is the **encrypted Home Assistant native API** plus OTA. The
 example configuration also enables ESPHome's local web interface with required,
 secret-backed authentication. It groups pool overview, water chemistry,
-equipment, automation, and diagnostics into a themed dashboard.
+equipment, automation, and diagnostics into a responsive pool-operations
+dashboard with a local professional theme.
 
 ## Why this is interesting
 

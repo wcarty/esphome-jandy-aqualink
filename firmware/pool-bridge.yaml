@@ -49,6 +49,7 @@ logger:
 web_server:
   version: 3
   css_include: pool-dashboard.css
+  js_include: pool-dashboard.js
   auth:
     username: !secret pool_bridge_web_username
     password: !secret pool_bridge_web_password
