@@ -162,23 +162,6 @@ switch:
     turn_off_action:
       - lambda: "id(jandy_comp).set_sniff_all(false);"
 
-  # Bus census: counts (dest, cmd) while on and logs a summary when turned off.
-  # Read-only, transmits nothing, and far quieter than Bus Sniff. Turn it on,
-  # drive the panel, turn it off, then read the summary in the device log.
-  # It exists to answer one question: does display text (cmd 0x25) ever reach an
-  # AllButton keypad address (0x08), or only the iAqualink slot (0x33)? That
-  # decides whether AqualinkD's LCD-driven program reader can be ported here.
-  - platform: template
-    name: "Pool Bus Census"
-    id: bus_census
-    icon: "mdi:counter"
-    optimistic: true
-    restore_mode: ALWAYS_OFF
-    turn_on_action:
-      - lambda: "id(jandy_comp).set_census(true);"
-    turn_off_action:
-      - lambda: "id(jandy_comp).set_census(false);"
-
   # Scheduler permission: when on, the autonomous HA pool brain may set pump speed
   # and toggle Filter Pump (0x11) / Cleaner (0x15) WITHOUT the master interlock.
   # Scoped to exactly those writes in firmware (is_scheduler_safe_key); every other

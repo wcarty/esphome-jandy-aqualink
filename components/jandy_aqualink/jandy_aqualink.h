@@ -65,12 +65,6 @@ class JandyAqualink : public Component {
   // the panel schedule. Logs only; never transmits. Off by default.
   void set_sniff_all(bool on) { sniff_all_ = on; }
 
-  // Bus census: counts (dest, cmd) while on, then logs a summary when turned
-  // off. Read-only, transmits nothing. Exists to answer one question without
-  // eyeballing a sniff log: does display text (cmd 0x25) ever reach an
-  // AllButton keypad address (0x08), or only the iAqualink slot (0x33)?
-  void set_census(bool on);
-
   // Switch the panel to Pool Mode by pressing the iAqualink Spa toggle (keycode
   // 0x12, the home-page Spa button). Heavily gated: requires the master
   // interlock on, iAqualink presence on, and the panel currently in spa mode.
@@ -197,8 +191,6 @@ class JandyAqualink : public Component {
   // across reboots so the brain self-resumes. Every other write still needs interlock_.
   volatile bool scheduler_armed_{false};
   volatile bool sniff_all_{false};  // promiscuous bus capture (read-only diagnostic)
-  volatile bool census_on_{false};  // (dest,cmd) census (read-only diagnostic)
-  jandy::BusCensus census_;         // reset by zeroing `used`, a single atomic byte write
   volatile uint32_t iaq_acks_{0};
 
   // iAqualink home-page decoder (core-1 task) + temperature mirrors. -999 means

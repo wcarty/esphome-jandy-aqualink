@@ -39,6 +39,20 @@ class TestDecodeDisplayLine(unittest.TestCase):
         self.assertEqual(line.line, 0x01)
         self.assertEqual(line.text, "167")
 
+    def test_reports_dest_iaqualink(self):
+        """Every captured display frame on this panel is addressed to 0x33.
+
+        AqualinkD's program reader needs display text at an AllButton keypad
+        address instead, so callers must be able to tell the two apart rather
+        than assuming.
+        """
+        line = decode_display(frame(fx.DISPLAY_AIR_LABEL))
+        self.assertEqual(line.dest, 0x33)
+
+    def test_reports_dest_allbutton(self):
+        line = decode_display(frame(fx.display_frame(0x05, "REVIEW", dest=0x08)))
+        self.assertEqual(line.dest, 0x08)
+
     def test_non_display_frame_returns_none(self):
         self.assertIsNone(decode_display(frame(fx.POLL_PUMP)))  # cmd 0x00
 

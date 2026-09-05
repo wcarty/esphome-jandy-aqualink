@@ -22,6 +22,42 @@
 
 ---
 
+## CORRECTION 2026-09-05: Tasks 1 to 3 are VOID. Do not execute them.
+
+**The component already has a bus census.** `jandy_aqualink.h:269` declares
+`std::vector<CensusEntry> census_`, `observe_frame` records every unique `(dest, cmd)` with a
+sample frame unconditionally, and `dump_observations()` logs the whole table periodically. This
+is the census from commit `7566d86` that found "46 distinct (dest/cmd) frame types".
+
+Tasks 1 to 3 rebuilt it. The duplicate `jandy::BusCensus` collided with the real `census_` and
+was the only thing that broke the build. All of it has been reverted. What survives from that
+work is small and worth keeping: `DisplayLine` now carries `dest`, and the `display.py` docstring
+no longer wrongly calls cmd 0x25 "the AllButton keypad" display.
+
+**Consequences, all good:**
+
+- **No firmware change is needed for Phase 1.** No flash, no OTA, and therefore no 2026.5.3 to
+  2026.8.2 framework jump on the device that runs the pool. Risk drops to zero.
+- The existing census is always on, so if the panel ever emits cmd 0x25 to dest 0x08 it is
+  already being recorded. The key is `(dest << 8) | cmd`, so the entry to look for is **0x0825**.
+
+**The real Phase 1 procedure, replacing Tasks 1 to 4:**
+
+1. Attach to the device log: `ssh root@192.168.1.126 'docker exec ESPHome esphome logs /config/pool-bridge.yaml'`
+2. Wait for a `dump_observations()` cycle and record the baseline census. Confirm `0x3325`
+   (display to iAqualink) is present and `0x0825` is absent.
+3. Pause the pool brain (`timer.pool_manual_hold`), arm the keypress interlock, and press "Pool
+   Keypad Press MENU" then "Pool Keypad Press RIGHT" a few times from Home Assistant.
+4. Watch for a new census line. `0x0825` appearing means the panel will drive an AllButton
+   display and AqualinkD's reader is portable. Its continued absence means it will not, and Phase
+   2 is the real iAquaLink capture route.
+5. Disarm the interlock and cancel the manual hold.
+
+**Do not shorten step 5.** The census survives until reboot, so there is no need to rush.
+
+Everything below is kept as the record of how the question was framed and what was found in the
+AqualinkD source. The AqualinkD findings in Background are still accurate and still load-bearing.
+
 ## Background, and why this phase exists
 
 The founder wants two things: delete the panel's old stored programs, and understand the panel well enough to go past AqualinkD on cheap hardware.

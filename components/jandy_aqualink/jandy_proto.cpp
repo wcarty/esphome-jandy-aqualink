@@ -342,30 +342,6 @@ size_t build_settemp_frame(uint16_t temp, uint8_t *out, size_t out_cap) {
 
 // --- self-test over the same vectors the Python suite uses ---
 
-void BusCensus::feed(uint8_t dest, uint8_t cmd) {
-  for (uint8_t i = 0; i < used; i++) {
-    if (entries[i].dest == dest && entries[i].cmd == cmd) {
-      entries[i].count++;
-      return;
-    }
-  }
-  if (used < MAX_ENTRIES) {
-    entries[used].dest = dest;
-    entries[used].cmd = cmd;
-    entries[used].count = 1;
-    used++;
-  }
-}
-
-uint32_t BusCensus::count(uint8_t dest, uint8_t cmd) const {
-  for (uint8_t i = 0; i < used; i++) {
-    if (entries[i].dest == dest && entries[i].cmd == cmd) return entries[i].count;
-  }
-  return 0;
-}
-
-bool BusCensus::saw_display_at(uint8_t dest) const { return count(dest, CMD_DISPLAY) > 0; }
-
 bool selftest(std::string &detail) {
   int ok = 0, total = 0;
 
@@ -614,20 +590,6 @@ bool selftest(std::string &detail) {
                 clean.cleaner && !clean.air_blower && !clean.spa_mode;
     if (pass) ok++;
     else detail += " STATUS08";
-  }
-
-  // Bus census: same vectors as tests/test_census.py.
-  {
-    total++;
-    BusCensus census;
-    census.feed(0x33, CMD_DISPLAY);
-    census.feed(0x33, CMD_DISPLAY);
-    census.feed(0x60, CMD_POLL);
-    bool pass = census.count(0x33, CMD_DISPLAY) == 2 && census.count(0x60, CMD_POLL) == 1 &&
-                census.count(0x08, CMD_DISPLAY) == 0 && census.saw_display_at(0x33) &&
-                !census.saw_display_at(0x08);
-    if (pass) ok++;
-    else detail += " CENSUS";
   }
 
   detail = std::to_string(ok) + "/" + std::to_string(total);
