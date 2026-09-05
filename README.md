@@ -1,4 +1,7 @@
-# ESPHome Jandy AquaLink (ESP32-native, at the bus)
+# ESPHome Jandy AquaLink
+
+Monitor and control a Jandy AquaLink RS pool system from Home Assistant with an
+ESP32 connected directly to the RS485 bus.
 
 An ESPHome external component that talks to a **Jandy AquaLink RS** pool panel over
 its RS485 bus from an ESP32 wired directly to the bus. It does the timing-critical
@@ -9,24 +12,20 @@ Assistant natively**.
 Built and proven against a real AquaLink RS-8 panel with a Pentair IntelliFlo VS
 pump on the same bus, on an M5Stack Atom Lite (about $20 of hardware).
 
+> [!WARNING]
+> This project can control live pool equipment. Start with the master interlock
+> off, confirm that readings look right, and stay at the equipment pad for a
+> first test of every control. Do not use another emulator at the same bus
+> address.
+
 ## What it does
 
-Reading (no actuation):
-- Holds an emulated AllButton keypad (`0x08`) and answers the panel's poll in-slot
-  in about **110 microseconds**, against the panel's ~20-40 ms reply window, framing
-  the whole bus with **zero checksum errors**.
-- Emulates the iAqualink controller (`0x33`) to read **pool / spa / air temperatures**
-  and decode live **equipment status** (filter pump, cleaner, spa mode, blower).
-- Reads **pump speed (RPM) and watts** from the panel's status page.
-- Passively reads **AquaPure salt chlorinator** output percentage, salt level,
-  operating state, and faults from its normal RS485 poll/reply traffic.
-
-Control (all gated, off by default, see Safety):
-- **Pump speed** by exact RPM or presets, salt-cell-flow aware.
-- **Filter pump, cleaner, lights, blower**, and **pool / spa mode** switching.
-- **AUX2** and **AUX6** direct circuit toggles (for the configured color wheel
-  and Stenner dosing pump).
-- **Heaters** on/off and **temperature setpoints** (pool and spa).
+| Area | Available in Home Assistant |
+| --- | --- |
+| Monitoring | Pool, spa, and air temperature; equipment state; pump RPM and watts; AquaPure output, salt level, and faults |
+| Everyday control | Filter pump, cleaner, lights, blower, pool/spa mode, AUX2 color wheel, and AUX6 Stenner dosing pump |
+| Advanced control | Pump RPM presets or slider; pool and spa heater enable and setpoints |
+| Safety | Master interlock off after every restart; iAqualink presence and page checks protect iAqualink writes |
 
 Home Assistant can run it as a **scheduler**: a narrow, restart-surviving permission
 lets HA set pump speed and toggle the filter pump and cleaner unattended, while
@@ -37,7 +36,9 @@ everything riskier stays behind the master interlock.
 This drives live equipment, so writes are conservative by construction:
 - A **master interlock** switch gates every write and **boots OFF** on every restart.
   With it off, the component is inert presence only.
-- Writes also require the iAqualink presence channel to be on.
+- iAqualink-based writes also require the iAqualink presence channel to be on.
+  The direct AUX2 and AUX6 keys use the AllButton path and still require the
+  master interlock.
 - The autonomous **scheduler** permission is scoped **per keycode** to exactly the
   filter pump and cleaner (plus pump speed). It can never fire a heater, valve, or
   light, even when armed.
@@ -74,13 +75,22 @@ Default pins match the M5 ATOM RS485 base: **GPIO19 = TX, GPIO22 = RX**, 9600 ba
 ## Install
 
 This is an ESPHome external component. A complete, working example device config is
-in [`firmware/pool-bridge.yaml`](firmware/pool-bridge.yaml). Minimal start:
+in [`firmware/pool-bridge.yaml`](firmware/pool-bridge.yaml).
+
+1. Wire the ESP32 and RS485 transceiver as described in [Hardware](#hardware).
+2. Copy the example configuration and add your Wi-Fi, API encryption, and OTA
+   secrets.
+3. Point ESPHome at this component:
 
 ```yaml
 external_components:
-  - source: github://4pBdhJoZ3Xy3reVvBoU9C3YPzyXDDU/esphome-jandy-aqualink
+  - source: github://wcarty/esphome-jandy-aqualink
     refresh: 0s
+```
 
+4. Add the minimum component configuration:
+
+```yaml
 jandy_aqualink:
   keypad_address: 0x08
   polls_answered:
@@ -91,8 +101,14 @@ jandy_aqualink:
     name: Jandy Bus Checksum Errors
 ```
 
-After it boots, `Polls Answered` should climb steadily and `Checksum Errors` should
-stay at zero.
+5. Flash the device. `Polls Answered` should climb steadily and `Checksum Errors`
+   should remain at zero.
+6. Turn on **iAqualink Presence** to receive temperature and iAqualink-page
+   readings. Leave **Pool Keypad Keypress Armed** off until you are ready to
+   operate equipment.
+
+The example config creates every supported entity and is the best starting point
+for a complete installation.
 
 ## Picking a keypad address
 
@@ -112,6 +128,12 @@ controller had long since died.
   boost, or any other AquaPure setting.
 - The heater-enabled status decode is unreliable on the test panel; trust the panel's
   own heat indicator over that sensor.
+
+## Documentation
+
+Start with the [documentation guide](docs/README.md). It points to the current
+capability map and roadmap, and separates them from historical design and session
+notes.
 
 ## Repository layout
 

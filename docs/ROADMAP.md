@@ -1,5 +1,11 @@
 # Roadmap
 
+> **Current build (2026-09-05):** The component now reads AquaPure salt output,
+> salt ppm, and faults passively, and provides interlock-gated direct controls
+> for AUX2 (color wheel) and AUX6 (Stenner dosing pump). Earlier sections are
+> retained as project history; use the README and capability map for the current
+> supported surface.
+
 ## v1 (done): keypad presence + health diagnostics
 
 Hold an emulated AllButton keypad on the bus, reply to polls in-slot on core 1,

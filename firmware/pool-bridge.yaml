@@ -1,7 +1,7 @@
-# Example ESPHome config for the Jandy Aqualink keypad-presence component on an
-# M5Stack Atom Lite + ATOM RS485 base. This is the publishable reference. The
-# live device config on the ESPHome dashboard is generated from this at deploy
-# time (with the real external_components repo URL and working secrets).
+# Start here: this is a complete ESPHome example for a Jandy AquaLink RS bridge
+# on an M5Stack Atom Lite with the ATOM RS485 base. Fill in the secrets, confirm
+# the GPIO pins match your hardware, then compile and flash. The master control
+# interlock starts OFF, so the bridge begins in a safe monitoring-only state.
 
 esphome:
   name: pool-bridge
@@ -44,7 +44,8 @@ logger:
   task_log_buffer_size: 4096  # the core-1 task logs a multi-line bus census in bursts
 
 external_components:
-  # Point this at the component repo. refresh: 0s forces a re-pull each compile.
+  # This private repository is the component source. refresh: 0s fetches the
+  # latest version on each compile.
   - source: github://wcarty/esphome-jandy-aqualink
     refresh: 0s
 

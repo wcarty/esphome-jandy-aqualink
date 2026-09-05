@@ -1,6 +1,12 @@
 # Pool Panel Capability Map
 
-Date: 2026-05-31
+> **Current feature note (2026-09-05):** This page began as the 2026-05-31
+> read-only panel survey below. The component now also passively reads AquaPure
+> salt chlorinator output, salt level, and faults; it provides direct,
+> interlock-gated AUX2 and AUX6 controls. The slot map remains a snapshot of the
+> surveyed panel, not a universal layout.
+
+Date: 2026-05-31 (survey snapshot)
 Source: live read-only survey of the AquaLink RS power center via the iAqualink
 emulator at address 0x33 (firmware HEAD with compact page logging). Navigation
 was view-only: no equipment, value, or commit button was pressed. Pump is a
@@ -34,6 +40,9 @@ MENU 0x0f, ONETOUCH 0x4d, COLOR_LIGHT 0x48. These were not walked this session.
 | Pump model | STATUS2 message line | text | "Intelliflo VS 1" |
 | Pump RPM | STATUS2 line "    RPM: NNNN" | int after "RPM:" | 2750 |
 | Pump watts | STATUS2 line "  Watts: NNNN" | int after "Watts:" | 1263 |
+| AquaPure output | Passive command to SWG address `0x50`-`0x53` | percent | supported |
+| Salt level | Passive AquaPure poll reply | ppm | supported |
+| AquaPure status | Passive AquaPure poll reply | on / fault text | supported |
 
 Notes:
 - Pump RPM/watts are NOT on the bus passively. The panel sends the pump (address
@@ -44,12 +53,23 @@ Notes:
   HOME, DEVICES, DEVICES2, STATUS2, and MENU (which renders empty to us); paging
   forward from STATUS2 only reaches DEVICES2. Phase 1 saw "Generating" via
   AqualinkD, which almost certainly read the salt cell's own RS-bus frames, not an
-  iAqualink page. Reading salt/SWG here would be a separate task: find the SWG
-  device in the bus census and decode its salt %/ppm frames passively, not page
-  navigation.
+  iAqualink page. This is now handled by the passive AquaPure decoder: output is
+  read from panel command `0x11`, and salt ppm plus status are read from the
+  following cell reply `0x16`.
 - Pump RPM changes on the pump's own schedule (observed 2750 RPM / 1263 W stepping
   to 1700 RPM / 293 W during the survey, with no input from us), which confirms
   the reading tracks the live pump.
+
+## Direct AllButton circuits
+
+The component also supports the two configured direct circuit keys below. These
+commands are not iAqualink grid keys, so they do not depend on the DEVICES-page
+slot layout. They still require the master interlock.
+
+| Circuit | AllButton key | Home Assistant entity |
+| --- | --- | --- |
+| AUX2 color wheel | `0x0A` | Pool Color Wheel |
+| AUX6 Stenner dosing pump | `0x10` | Pool Stenner Dosing Pump |
 
 ## Controllable items: DEVICES page (0x36)
 
