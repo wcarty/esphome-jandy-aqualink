@@ -7,13 +7,6 @@
       --c-pri-rgb: 54, 201, 218;
       color: #edf8fc;
     }
-    :host([data-pool-theme="light"]) {
-      --c-bg: #eaf6f8;
-      --c-text: #123342;
-      --c-primary: #087d99;
-      --c-pri-rgb: 8, 125, 153;
-      color: #123342;
-    }
     header {
       align-items: center;
       background: linear-gradient(120deg, #06384e, #087b9a 55%, #1eb6c8) !important;
@@ -47,31 +40,6 @@
       letter-spacing: 0.06em;
       text-transform: uppercase;
     }
-    #pool-theme-toggle {
-      background: rgba(2, 34, 48, 0.25);
-      border: 1px solid rgba(235, 254, 255, 0.55);
-      border-radius: 999px;
-      color: #fff;
-      cursor: pointer;
-      font: 700 0.72rem/1 Inter, ui-sans-serif, system-ui, sans-serif;
-      letter-spacing: 0.07em;
-      margin-left: auto;
-      padding: 0.6rem 0.75rem;
-      text-transform: uppercase;
-    }
-    #pool-theme-toggle:hover { background: rgba(2, 34, 48, 0.42); }
-    :host([data-pool-theme="light"]) header {
-      background: linear-gradient(120deg, #e7fbfd, #a5eaf0 55%, #6ccbd8) !important;
-      border-bottom-color: rgba(8, 91, 111, 0.25);
-    }
-    :host([data-pool-theme="light"]) header h1 { color: #123342; }
-    :host([data-pool-theme="light"]) header h1::before,
-    :host([data-pool-theme="light"]) header div { color: #14657a; }
-    :host([data-pool-theme="light"]) #pool-theme-toggle {
-      background: rgba(255, 255, 255, 0.58);
-      border-color: rgba(8, 91, 111, 0.28);
-      color: #164e61;
-    }
     main {
       gap: 1.25rem;
       margin: 0 auto;
@@ -85,7 +53,6 @@
       color: #e7f5fa;
       font-family: Inter, ui-sans-serif, system-ui, sans-serif;
     }
-    :host-context(esp-app[data-pool-theme="light"]) { color: #153b4a; }
     .tab-header {
       background: linear-gradient(90deg, #0b3b51, #0e5269);
       border: 1px solid rgba(105, 220, 232, 0.24);
@@ -129,25 +96,6 @@
     }
     button:hover, .btn:hover { filter: brightness(1.16); }
     input[type="range"] { accent-color: #41d7e3; }
-    :host-context(esp-app[data-pool-theme="light"]) .tab-header {
-      background: linear-gradient(90deg, #cbeff3, #e5f8f9);
-      border-color: rgba(8, 104, 128, 0.2);
-      color: #156176;
-    }
-    :host-context(esp-app[data-pool-theme="light"]) .tab-container {
-      background: rgba(255, 255, 255, 0.94);
-      border-color: rgba(8, 104, 128, 0.2);
-      box-shadow: 0 10px 28px rgba(20, 75, 92, 0.12);
-    }
-    :host-context(esp-app[data-pool-theme="light"]) .entity-row {
-      border-bottom-color: rgba(8, 104, 128, 0.1);
-    }
-    :host-context(esp-app[data-pool-theme="light"]) .entity-row:nth-child(2n) {
-      background: rgba(118, 220, 230, 0.13);
-    }
-    :host-context(esp-app[data-pool-theme="light"]) .entity-row > :nth-child(1) { color: #087d99; }
-    :host-context(esp-app[data-pool-theme="light"]) .entity-row > :nth-child(2) { color: #173f4e; }
-    :host-context(esp-app[data-pool-theme="light"]) .entity-row > :nth-child(3) { color: #0a6980; }
   `;
 
   const switchStyles = `
@@ -210,14 +158,6 @@
       filter: grayscale(1);
       opacity: 0.5;
     }
-    :host-context(esp-app[data-pool-theme="light"]) .lever {
-      background: #b9d5dc !important;
-      border-color: rgba(6, 98, 121, 0.22);
-    }
-    :host-context(esp-app[data-pool-theme="light"]) .lever:before { color: #315d6b; }
-    :host-context(esp-app[data-pool-theme="light"]) .lever:after {
-      background: linear-gradient(145deg, #fff, #d7edf1) !important;
-    }
   `;
 
   const installStyles = (element, id, styles) => {
@@ -230,7 +170,6 @@
   };
 
   const observedRoots = new WeakSet();
-  const themeStorageKey = "pool-dashboard-theme";
   const observe = (root) => {
     if (observedRoots.has(root)) return;
     new MutationObserver(decorate).observe(root, { childList: true, subtree: true });
@@ -240,37 +179,10 @@
   const decorate = () => {
     const app = document.querySelector("esp-app");
     if (!app) return;
-    const savedTheme = localStorage.getItem(themeStorageKey);
-    const theme = savedTheme === "light" ? "light" : "dark";
-    app.dataset.poolTheme = theme;
-    document.documentElement.dataset.poolTheme = theme;
     installStyles(app, "pool-dashboard-app-theme", appStyles);
     const appRoot = app.shadowRoot;
     if (!appRoot) return;
     observe(appRoot);
-    const header = appRoot.querySelector("header");
-    if (header && !header.querySelector("#pool-theme-toggle")) {
-      const toggle = document.createElement("button");
-      toggle.id = "pool-theme-toggle";
-      toggle.type = "button";
-      toggle.addEventListener("click", () => {
-        const nextTheme = app.dataset.poolTheme === "light" ? "dark" : "light";
-        app.dataset.poolTheme = nextTheme;
-        document.documentElement.dataset.poolTheme = nextTheme;
-        localStorage.setItem(themeStorageKey, nextTheme);
-        toggle.textContent = nextTheme === "light" ? "☾ Dark" : "☀ Light";
-        toggle.setAttribute("aria-label", `Switch to ${nextTheme} mode`);
-      });
-      header.append(toggle);
-    }
-    const themeToggle = header?.querySelector("#pool-theme-toggle");
-    if (themeToggle) {
-      themeToggle.textContent = theme === "light" ? "☾ Dark" : "☀ Light";
-      themeToggle.setAttribute(
-        "aria-label",
-        `Switch to ${theme === "light" ? "dark" : "light"} mode`
-      );
-    }
     appRoot.querySelectorAll("esp-entity-table").forEach((table) => {
       installStyles(table, "pool-dashboard-entities-theme", entityStyles);
       const tableRoot = table.shadowRoot;

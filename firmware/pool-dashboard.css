@@ -6,26 +6,12 @@
   --text-color: #effaff;
 }
 
-:root[data-pool-theme="light"] {
-  --primary-color: #087d99;
-  --accent-color: #0a9fb2;
-  --background-color: #eaf6f8;
-  --card-background-color: #ffffff;
-  --text-color: #123342;
-}
-
 html,
 body {
   background:
     radial-gradient(circle at top right, #0e526c 0%, transparent 35%),
     linear-gradient(160deg, #071e2b 0%, #0b3447 100%);
   min-height: 100%;
-}
-
-:root[data-pool-theme="light"] body {
-  background:
-    radial-gradient(circle at top right, #b6e9ee 0%, transparent 36%),
-    linear-gradient(160deg, #f7fcfd 0%, #dceff2 100%);
 }
 
 header,
