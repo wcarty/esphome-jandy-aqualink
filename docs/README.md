@@ -10,7 +10,7 @@
 | Document | Use it for |
 | --- | --- |
 | [🏠 Project README](../README.md) | Installation, wiring, safety, and first startup |
-| [🔌 Tested hardware stack](../README.md#1-gather-hardware) | M5Stack Atom Lite and ATOM RS485 Base |
+| [🔌 Tested hardware and wiring](../README.md#1-gather-hardware) | M5Stack Atom Lite, ATOM RS485 Base, and Jandy color-wire map |
 | [🧩 Pool Panel Capability Map](PANEL-CAPABILITY-MAP.md) | Supported readings, controls, and protocol limits |
 | [🗺️ Roadmap](ROADMAP.md) | Current feature status and future ideas |
 | [⚙️ Example configuration](../firmware/pool-bridge.yaml) | ESPHome device and Home Assistant entities |

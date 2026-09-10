@@ -65,6 +65,46 @@ the other.
 The tested ATOM RS485 base uses automatic direction control. Defaults are
 **GPIO19 TX**, **GPIO22 RX**, **9600 baud**, 8N1.
 
+### 1a. Wire the Jandy RS485 harness
+
+The usual four-wire Jandy RS485 harness color convention is:
+
+| Jandy wire | Typical function | M5Stack ATOM RS485 Base terminal | Use |
+| --- | --- | --- | --- |
+| 🟡 **Yellow** | RS485 A / Data+ | **A** | Required |
+| 🟢 **Green** | RS485 B / Data- | **B** | Required |
+| ⚫ **Black** | 12V negative / ground | **12V-** | Required when powering from the panel |
+| 🔴 **Red** | +12V panel power | **+12V** | Optional; powers the Atom Lite through the RS485 Base |
+
+```text
+Jandy AquaLink RS harness                 M5Stack ATOM RS485 Base
+─────────────────────────                 ───────────────────────
+Yellow  ── RS485 A / Data+ ─────────────► A
+Green   ── RS485 B / Data- ─────────────► B
+Black   ── 12V negative / GND ──────────► 12V-
+Red     ── +12V ─────────────────────────► +12V  (optional power)
+```
+
+> [!IMPORTANT]
+> The **A** and **B** terminals are labeled on the ATOM RS485 Base. Wire to
+> those labels, not terminal position. Jandy harness colors are common but not
+> guaranteed across every installation; verify the panel terminal markings or
+> existing controller harness before connecting power.
+
+> [!TIP]
+> Connect **yellow + green** for RS485 data. Connect **red + black** only when
+> you want the Jandy panel's 12V supply to power the ATOM RS485 Base and Atom
+> Lite. If the Atom Lite is powered by USB instead, leave the panel's red wire
+> disconnected and insulate it; connect black to the base's **12V-** terminal
+> as the common reference.
+
+> [!CAUTION]
+> Turn off power to the AquaLink panel before wiring. Do not connect the Jandy
+> red +12V wire to an ATOM RS485 Base already powered by USB unless you have
+> confirmed the two power sources are safe to parallel. If **Checksum Errors**
+> rises or no valid frames appear after startup, turn off panel power and swap
+> only the yellow/green A/B data wires.
+
 ### 2. Configure ESPHome
 
 Copy [`firmware/pool-bridge.yaml`](firmware/pool-bridge.yaml), then add your
