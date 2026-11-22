@@ -67,7 +67,7 @@ KeypadStatus decode_keypad_status(const Frame &f) {
   KeypadStatus s;
   if (f.cmd() != CMD_STATUS) return s;
   s.valid = true;
-  s.air_blower = status_bit(f, 0, 6);
+  s.air_blower = status_bit(f, 1, 6);
   s.cleaner = status_bit(f, 1, 0);
   s.spa_mode = status_bit(f, 1, 2);
   s.filter_pump = status_bit(f, 1, 4);
@@ -328,10 +328,10 @@ void Reader::feed(const Frame &f) {
       if (key == 1) {
         state.air = val;
         state.has_air = true;
-      } else if (key == 2) {
+      } else if (key == 2 && val >= 35 && val <= 115) {
         state.pool = val;
         state.has_pool = true;
-      } else if (key == 3) {
+      } else if (key == 3 && val >= 35 && val <= 115) {
         state.spa = val;
         state.has_spa = true;
       }
@@ -850,7 +850,7 @@ bool selftest(std::string &detail) {
     };
     KeypadStatus base = decode_keypad_status(lf({0x10,0x02,0x08,0x02,0x00,0x10,0x00,0x00,0x00,0x2C,0x10,0x03}));
     KeypadStatus spa = decode_keypad_status(lf({0x10,0x02,0x08,0x02,0x00,0x14,0x00,0x00,0x00,0x30,0x10,0x03}));
-    KeypadStatus blow = decode_keypad_status(lf({0x10,0x02,0x08,0x02,0x40,0x10,0x00,0x00,0x00,0x6C,0x10,0x03}));
+    KeypadStatus blow = decode_keypad_status(lf({0x10,0x02,0x08,0x02,0x00,0x50,0x00,0x00,0x00,0x6C,0x10,0x03}));
     KeypadStatus clean = decode_keypad_status(lf({0x10,0x02,0x08,0x02,0x00,0x11,0x00,0x00,0x00,0x2D,0x10,0x03}));
     bool pass = base.valid && !base.air_blower && !base.cleaner && !base.spa_mode && base.filter_pump &&
                 spa.spa_mode && !spa.air_blower && !spa.cleaner &&
