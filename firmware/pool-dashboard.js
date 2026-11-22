@@ -1,17 +1,30 @@
 (() => {
   const S = {};
+  const RAW_ID = {};
   const SWITCHES = [
-    { id: "pool_filter_pump", label: "Filter Pump" },
-    { id: "pool_spa_mode", label: "Spa Mode" },
-    { id: "spa_booster_pump", label: "Spa Booster Pump" },
-    { id: "pool_air_blower", label: "Air Blower" },
-    { id: "pool_light", label: "Pool Light" },
-    { id: "pool_color_wheel", label: "Color Wheel" },
-    { id: "pool_spillover_waterfall", label: "Spillover Waterfall" },
-    { id: "pool_acid_dosing", label: "Acid Dosing (Manual)" },
+    { key: "pool_filter_pump", name: "Pool Filter Pump", label: "Filter Pump" },
+    { key: "pool_spa_mode", name: "Pool Spa Mode", label: "Spa Mode" },
+    { key: "spa_booster_pump", name: "Spa Booster Pump", label: "Spa Booster Pump" },
+    { key: "pool_air_blower", name: "Pool Air Blower", label: "Air Blower" },
+    { key: "pool_light", name: "Pool Light", label: "Pool Light" },
+    { key: "pool_color_wheel", name: "Pool Color Wheel", label: "Color Wheel" },
+    { key: "pool_spillover_waterfall", name: "Pool Spillover Waterfall", label: "Spillover Waterfall" },
+    { key: "pool_acid_dosing", name: "Pool Acid Dosing", label: "Acid Dosing (Manual)" },
   ];
 
   function el(id) { return document.getElementById(id); }
+
+  function normId(raw) {
+    if (!raw) return "";
+    return raw.toLowerCase().replace("/", "-").replace(/[^a-z0-9-]+/g, "_").replace(/^_|_$/g, "");
+  }
+
+  function postAction(domain, fallbackName, action) {
+    const key = normId(`${domain}/${fallbackName}`);
+    const raw = RAW_ID[key] || `${domain}/${fallbackName}`;
+    const path = "/" + raw.split("/").map(encodeURIComponent).join("/") + "/" + action;
+    return fetch(path, { method: "POST" });
+  }
 
   function mount() {
     if (el("aq-pro-root")) return;
@@ -31,7 +44,7 @@
           <span id="aq-mode-pill" class="aq-pill">POOL MODE</span>
           <span id="aq-bus-pill" class="aq-pill ok">BUS: 0 ERR</span>
           <span id="aq-interlock-pill" class="aq-pill warn">INTERLOCK: --</span>
-          <button id="aq-toggle-native" class="aq-btn-ghost">Show Logs / Raw UI</button>
+          <button id="aq-toggle-logs" class="aq-btn-ghost">Show Live Logs</button>
         </div>
       </div>
 
@@ -101,27 +114,38 @@
           </div>
           <div id="aq-equip-grid" class="aq-equip-grid">
             ${SWITCHES.map(
-              (sw) => `<button class="aq-tile" data-sw="${sw.id}">
+              (sw) => `<button class="aq-tile" data-key="${sw.key}" data-name="${sw.name}">
                 <span class="aq-tile-name">${sw.label}</span>
-                <span class="aq-tile-state" id="st-${sw.id}">OFF</span>
+                <span class="aq-tile-state" id="st-${sw.key}">OFF</span>
               </button>`
             ).join("")}
           </div>
         </div>
       </div>
+
+      <div id="aq-logs-card" class="aq-card" style="display:none;margin-top:16px">
+        <div class="aq-section-title">
+          <span>Live RS485 / ESPHome Console</span>
+          <button id="aq-clear-logs" class="aq-btn-ghost">Clear</button>
+        </div>
+        <pre id="aq-logs-pre" style="margin:0;max-height:300px;overflow:auto;font-size:12px;line-height:1.4;color:#93c5fd;background:#070d19;padding:12px;border-radius:10px;border:1px solid rgba(148,163,184,.12)"></pre>
+      </div>
     `;
     document.body.prepend(root);
 
-    el("aq-toggle-native").onclick = () => {
-      const hidden = document.body.classList.toggle("aq-hide-native");
-      el("aq-toggle-native").textContent = hidden ? "Show Logs / Raw UI" : "Hide Raw UI";
+    el("aq-toggle-logs").onclick = () => {
+      const card = el("aq-logs-card");
+      const open = card.style.display === "none";
+      card.style.display = open ? "block" : "none";
+      el("aq-toggle-logs").textContent = open ? "Hide Live Logs" : "Show Live Logs";
     };
+    el("aq-clear-logs").onclick = () => { el("aq-logs-pre").textContent = ""; };
 
-    el("aq-acid-auto-btn").onclick = () => fetch("/switch/pool_acid_auto_dosing/toggle", { method: "POST" });
-    el("aq-acid-estop").onclick = () => fetch("/button/pool_acid_emergency_stop/press", { method: "POST" });
+    el("aq-acid-auto-btn").onclick = () => postAction("switch", "Pool Acid Auto Dosing", "toggle");
+    el("aq-acid-estop").onclick = () => postAction("button", "Pool Acid Emergency Stop", "press");
 
     root.querySelectorAll(".aq-tile").forEach((btn) => {
-      btn.onclick = () => fetch(`/switch/${btn.dataset.sw}/toggle`, { method: "POST" });
+      btn.onclick = () => postAction("switch", btn.dataset.name, "toggle");
     });
   }
 
@@ -193,10 +217,10 @@
     }
 
     SWITCHES.forEach((sw) => {
-      const st = val(`switch-${sw.id}`);
+      const st = val(`switch-${sw.key}`);
       if (!st) return;
       const isOn = st === "ON";
-      const badge = el(`st-${sw.id}`);
+      const badge = el(`st-${sw.key}`);
       if (badge) {
         badge.textContent = st;
         badge.closest(".aq-tile").classList.toggle("on", isOn);
@@ -211,10 +235,22 @@
       try {
         const d = JSON.parse(e.data);
         if (d && d.id) {
-          S[d.id] = d;
+          const k = normId(d.id);
+          S[k] = d;
+          RAW_ID[k] = d.id;
           render();
         }
       } catch (_) {}
+    });
+    es.addEventListener("log", (e) => {
+      const pre = el("aq-logs-pre");
+      if (!pre) return;
+      const line = (e.data || "").replace(/\x1b\[[0-9;]*m/g, "");
+      pre.textContent += line + "\n";
+      if (pre.textContent.length > 25000) {
+        pre.textContent = pre.textContent.slice(-20000);
+      }
+      pre.scrollTop = pre.scrollHeight;
     });
   }
 
