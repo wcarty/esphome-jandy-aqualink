@@ -389,8 +389,8 @@ void JandyAqualink::arm_key(uint8_t key) {
              static_cast<unsigned>(key));
     return;
   }
-  if (!jandy::is_safe_nav_key(key)) {
-    ESP_LOGW(TAG, "keypress REFUSED: key 0x%02X is not a display-only nav key",
+  if (!jandy::is_safe_nav_key(key) && !jandy::is_direct_aux_key(key)) {
+    ESP_LOGW(TAG, "keypress REFUSED: key 0x%02X is not an allowed key",
              static_cast<unsigned>(key));
     return;
   }
