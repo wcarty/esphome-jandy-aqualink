@@ -10,7 +10,7 @@ esphome:
 esp32:
   board: m5stack-atom
   framework:
-    type: arduino
+    type: esp-idf
 
 wifi:
   ssid: !secret wifi_ssid
@@ -40,7 +40,7 @@ ota:
     password: !secret pool_bridge_ota_password
 
 logger:
-  baud_rate: 0  # no serial logger; logs stream to the dashboard over the network
+  baud_rate: 115200  # enables USB/serial console logging alongside network logs
   task_log_buffer_size: 4096  # the core-1 task logs a multi-line bus census in bursts
 
 # Local device UI for monitoring and control when Home Assistant is unavailable.
@@ -182,6 +182,22 @@ jandy_aqualink:
     name: Spa Heat (enabled)
     web_server:
       sorting_group_id: pool_equipment
+  # Local ESP32 acid dosing controller (disabled by default until AUX6 bit is pinned)
+  acid_dosing_enabled: false
+  # aux6_status_byte: 0
+  # aux6_status_bit: 0
+  acid_target_ph: 7.6
+  acid_dose_seconds: 120
+  acid_cooldown_seconds: 3600
+  acid_max_daily_seconds: 900
+  acid_dosing_state:
+    name: Pool Acid Dosing Status
+    web_server:
+      sorting_group_id: pool_chemistry
+  acid_dosing_status:
+    name: Pool Acid Controller State
+    web_server:
+      sorting_group_id: pool_chemistry
 
 # --- Phase 2 gated keypress controls ---
 # Reading temperatures needs the panel to redraw its display, which it only does
@@ -353,6 +369,18 @@ switch:
       - lambda: "id(jandy_comp).press_aux6();"
     turn_off_action:
       - lambda: "id(jandy_comp).press_aux6();"
+    web_server:
+      sorting_group_id: pool_automation
+
+  - platform: template
+    name: "Pool Acid Auto Dosing"
+    id: pool_acid_auto
+    icon: "mdi:flask-round-bottom"
+    lambda: "return id(jandy_comp).acid_auto_enabled();"
+    turn_on_action:
+      - lambda: "id(jandy_comp).set_acid_auto_enabled(true);"
+    turn_off_action:
+      - lambda: "id(jandy_comp).set_acid_auto_enabled(false);"
     web_server:
       sorting_group_id: pool_automation
 
