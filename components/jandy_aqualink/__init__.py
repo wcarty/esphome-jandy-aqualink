@@ -38,6 +38,15 @@ CONF_FILTER_PUMP_STATE = "filter_pump_state"
 CONF_CLEANER_STATE = "cleaner_state"
 CONF_POOL_HEAT_ENABLED = "pool_heat_enabled"
 CONF_SPA_HEAT_ENABLED = "spa_heat_enabled"
+CONF_AUX6_STATUS_BYTE = "aux6_status_byte"
+CONF_AUX6_STATUS_BIT = "aux6_status_bit"
+CONF_ACID_DOSING_STATE = "acid_dosing_state"
+CONF_ACID_DOSING_STATUS = "acid_dosing_status"
+CONF_ACID_DOSING_ENABLED = "acid_dosing_enabled"
+CONF_ACID_TARGET_PH = "acid_target_ph"
+CONF_ACID_DOSE_SECONDS = "acid_dose_seconds"
+CONF_ACID_COOLDOWN_SECONDS = "acid_cooldown_seconds"
+CONF_ACID_MAX_DAILY_SECONDS = "acid_max_daily_seconds"
 
 
 def _temp_sensor():
@@ -140,6 +149,20 @@ CONFIG_SCHEMA = cv.Schema(
         cv.Optional(CONF_SPA_HEAT_ENABLED): binary_sensor.binary_sensor_schema(
             icon="mdi:fire",
         ),
+        cv.Optional(CONF_AUX6_STATUS_BYTE): cv.int_range(min=0, max=4),
+        cv.Optional(CONF_AUX6_STATUS_BIT, default=0): cv.int_range(min=0, max=7),
+        cv.Optional(CONF_ACID_DOSING_STATE): binary_sensor.binary_sensor_schema(
+            device_class="running",
+            icon="mdi:flask",
+        ),
+        cv.Optional(CONF_ACID_DOSING_STATUS): text_sensor.text_sensor_schema(
+            icon="mdi:flask-outline",
+        ),
+        cv.Optional(CONF_ACID_DOSING_ENABLED, default=False): cv.boolean,
+        cv.Optional(CONF_ACID_TARGET_PH, default=7.6): cv.float_range(min=7.0, max=8.0),
+        cv.Optional(CONF_ACID_DOSE_SECONDS, default=120): cv.int_range(min=10, max=360),
+        cv.Optional(CONF_ACID_COOLDOWN_SECONDS, default=3600): cv.int_range(min=300, max=14400),
+        cv.Optional(CONF_ACID_MAX_DAILY_SECONDS, default=900): cv.int_range(min=60, max=3600),
     }
 ).extend(cv.COMPONENT_SCHEMA)
 
@@ -215,3 +238,19 @@ async def to_code(config):
     if CONF_SPA_HEAT_ENABLED in config:
         b = await binary_sensor.new_binary_sensor(config[CONF_SPA_HEAT_ENABLED])
         cg.add(var.set_spa_heat_bs(b))
+    if CONF_AUX6_STATUS_BYTE in config:
+        cg.add(var.set_aux6_status_pos(config[CONF_AUX6_STATUS_BYTE], config[CONF_AUX6_STATUS_BIT]))
+    if CONF_ACID_DOSING_STATE in config:
+        b = await binary_sensor.new_binary_sensor(config[CONF_ACID_DOSING_STATE])
+        cg.add(var.set_acid_dosing_bs(b))
+    if CONF_ACID_DOSING_STATUS in config:
+        s = await text_sensor.new_text_sensor(config[CONF_ACID_DOSING_STATUS])
+        cg.add(var.set_acid_dosing_status_ts(s))
+    cg.add(var.set_acid_config(
+        config[CONF_ACID_TARGET_PH],
+        config[CONF_ACID_DOSE_SECONDS],
+        config[CONF_ACID_COOLDOWN_SECONDS],
+        config[CONF_ACID_MAX_DAILY_SECONDS],
+    ))
+    if config[CONF_ACID_DOSING_ENABLED]:
+        cg.add(var.set_acid_auto_enabled(True))

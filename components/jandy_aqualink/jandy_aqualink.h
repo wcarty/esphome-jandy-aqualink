@@ -50,6 +50,23 @@ class JandyAqualink : public Component {
   void set_cleaner_bs(binary_sensor::BinarySensor *b) { cleaner_bs_ = b; }
   void set_pool_heat_bs(binary_sensor::BinarySensor *b) { pool_heat_bs_ = b; }
   void set_spa_heat_bs(binary_sensor::BinarySensor *b) { spa_heat_bs_ = b; }
+  void set_aux6_status_pos(int byte_i, int bit_i) {
+    aux6_status_byte_ = byte_i;
+    aux6_status_bit_ = bit_i;
+  }
+  void set_acid_dosing_bs(binary_sensor::BinarySensor *b) { acid_dosing_bs_ = b; }
+  void set_acid_dosing_status_ts(text_sensor::TextSensor *s) { acid_dosing_status_ts_ = s; }
+  void set_acid_config(float target_ph, uint32_t dose_s, uint32_t cooldown_s, uint32_t max_daily_s) {
+    acid_target_ph_ = target_ph;
+    acid_dose_s_ = dose_s > 360 ? 360 : dose_s;
+    acid_cooldown_s_ = cooldown_s;
+    acid_max_daily_s_ = max_daily_s;
+  }
+  void set_acid_auto_enabled(bool on);
+  bool acid_auto_enabled() const { return acid_auto_enabled_; }
+  bool acid_dosing_on() const { return cs_aux6_ == 1; }
+  void set_acid_dosing(bool on);
+  void acid_emergency_stop();
 
   // Phase 2 gated keypress controls. Called from core 0 (HA/web/lambda). The
   // master interlock is OFF by default; with it off the device is exactly v1
@@ -171,6 +188,9 @@ class JandyAqualink : public Component {
   void send_swg_set_(uint8_t percent);
   void arm_aux_key_(uint8_t key, const char *name);
   void set_tracked_toggle_(bool on, int8_t current, uint8_t key, const char *name);
+  void run_acid_controller_(uint32_t now_ms, int8_t pump_s, int8_t aux6_s, int swg_pct, int swg_st, float ph_v,
+                            uint32_t last_ph_ms);
+  void publish_acid_status_(const char *status);
 
   int tx_pin_{19};
   int rx_pin_{22};
@@ -198,10 +218,29 @@ class JandyAqualink : public Component {
   binary_sensor::BinarySensor *cleaner_bs_{nullptr};
   binary_sensor::BinarySensor *pool_heat_bs_{nullptr};
   binary_sensor::BinarySensor *spa_heat_bs_{nullptr};
+  binary_sensor::BinarySensor *acid_dosing_bs_{nullptr};
+  text_sensor::TextSensor *acid_dosing_status_ts_{nullptr};
+  int aux6_status_byte_{-1};
+  int aux6_status_bit_{0};
   // Decoded keypad-status circuit states, written by core 1 under mux_, published
   // by core 0. -1 = not yet known, 0 = off, 1 = on.
-  volatile int8_t cs_spa_{-1}, cs_blower_{-1}, cs_pump_{-1}, cs_cleaner_{-1};
-  int8_t pub_cs_spa_{-2}, pub_cs_blower_{-2}, pub_cs_pump_{-2}, pub_cs_cleaner_{-2};
+  volatile int8_t cs_spa_{-1}, cs_blower_{-1}, cs_pump_{-1}, cs_cleaner_{-1}, cs_aux6_{-1};
+  int8_t pub_cs_spa_{-2}, pub_cs_blower_{-2}, pub_cs_pump_{-2}, pub_cs_cleaner_{-2}, pub_cs_aux6_{-2};
+  volatile uint32_t last_ph_ms_{0};
+  // Local ESP32 acid dosing controller state (core 0 only).
+  bool acid_auto_enabled_{false};
+  float acid_target_ph_{7.6f};
+  uint32_t acid_dose_s_{120};
+  uint32_t acid_cooldown_s_{3600};
+  uint32_t acid_max_daily_s_{900};
+  bool acid_batch_active_{false};
+  uint32_t acid_batch_start_ms_{0};
+  uint32_t acid_on_since_ms_{0};
+  uint32_t acid_cooldown_until_ms_{0};
+  uint32_t acid_daily_s_{0};
+  uint32_t acid_day_start_ms_{0};
+  uint32_t acid_last_cmd_ms_{0};
+  const char *pub_acid_status_{nullptr};
   volatile int8_t he_pool_{-1}, he_spa_{-1}, home_pool_light_{-1};
   int8_t pub_he_pool_{-2}, pub_he_spa_{-2};
 

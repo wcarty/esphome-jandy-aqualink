@@ -406,6 +406,167 @@ void JandyAqualink::press_aux3() { arm_aux_key_(jandy::KEY_AUX3, "AUX3"); }
 
 void JandyAqualink::press_aux6() { arm_aux_key_(jandy::KEY_AUX6, "AUX6"); }
 
+void JandyAqualink::set_acid_auto_enabled(bool on) {
+  if (on && aux6_status_byte_ < 0) {
+    ESP_LOGW(TAG, "ACID AUTO refused: aux6_status_byte not configured (pin AUX6 LED bit first)");
+    acid_auto_enabled_ = false;
+    return;
+  }
+  acid_auto_enabled_ = on;
+  ESP_LOGW(TAG, "ACID AUTO -> %s (target pH >= %.2f, dose=%us, cooldown=%us, max_daily=%us)",
+           on ? "ON" : "OFF", acid_target_ph_, static_cast<unsigned>(acid_dose_s_),
+           static_cast<unsigned>(acid_cooldown_s_), static_cast<unsigned>(acid_max_daily_s_));
+  if (!on && (acid_batch_active_ || cs_aux6_ == 1)) {
+    acid_batch_active_ = false;
+    set_acid_dosing(false);
+  }
+}
+
+void JandyAqualink::set_acid_dosing(bool on) {
+  if (aux6_status_byte_ < 0) {
+    ESP_LOGW(TAG, "set_acid_dosing(%d) refused: aux6_status_byte not configured", on ? 1 : 0);
+    return;
+  }
+  int8_t cur;
+  portENTER_CRITICAL(&mux_);
+  cur = cs_aux6_;
+  portEXIT_CRITICAL(&mux_);
+  if (cur < 0) {
+    ESP_LOGW(TAG, "set_acid_dosing(%d) refused: AUX6 state not yet known", on ? 1 : 0);
+    return;
+  }
+  if ((cur != 0) == on) return;
+  arm_aux_key_(jandy::KEY_AUX6, on ? "AUX6_ON" : "AUX6_OFF");
+}
+
+void JandyAqualink::acid_emergency_stop() {
+  acid_auto_enabled_ = false;
+  acid_batch_active_ = false;
+  acid_cooldown_until_ms_ = millis() + acid_cooldown_s_ * 1000u;
+  ESP_LOGE(TAG, "ACID EMERGENCY STOP triggered");
+  set_acid_dosing(false);
+  publish_acid_status_("Emergency Stop");
+}
+
+void JandyAqualink::publish_acid_status_(const char *status) {
+  if (!acid_dosing_status_ts_) return;
+  if (pub_acid_status_ && std::strcmp(pub_acid_status_, status) == 0) return;
+  acid_dosing_status_ts_->publish_state(status);
+  pub_acid_status_ = status;
+}
+
+void JandyAqualink::run_acid_controller_(uint32_t now_ms, int8_t pump_s, int8_t aux6_s, int swg_pct, int swg_st,
+                                         float ph_v, uint32_t last_ph_ms) {
+  if (aux6_status_byte_ < 0) {
+    publish_acid_status_("Unconfigured (pin AUX6 bit)");
+    return;
+  }
+  if (aux6_s < 0) {
+    publish_acid_status_("Waiting for AUX6 status");
+    return;
+  }
+
+  // Track 24h daily runtime window.
+  if (acid_day_start_ms_ == 0 || (now_ms - acid_day_start_ms_) >= 86400000u) {
+    acid_day_start_ms_ = now_ms;
+    acid_daily_s_ = 0;
+  }
+
+  // Track continuous AUX6 ON time for independent safety watchdog.
+  if (aux6_s == 1) {
+    if (acid_on_since_ms_ == 0) acid_on_since_ms_ = now_ms;
+  } else {
+    if (acid_on_since_ms_ != 0) {
+      acid_daily_s_ += (now_ms - acid_on_since_ms_) / 1000u;
+      acid_on_since_ms_ = 0;
+    }
+  }
+
+  bool pump_ok = (pump_s == 1);
+  bool swg_ok = (swg_st == 0 && swg_pct > 0);
+  bool ph_fresh = (last_ph_ms != 0 && (now_ms - last_ph_ms) <= 180000u && ph_v >= 6.8f && ph_v <= 8.4f);
+  uint32_t on_s = (acid_on_since_ms_ != 0) ? (now_ms - acid_on_since_ms_) / 1000u : 0;
+
+  // Independent safety watchdog (active even if auto-dosing is OFF):
+  // Immediately shut off AUX6 if circulation/SWG stops, telemetry goes stale,
+  // or continuous runtime exceeds 6 minutes (360s Stenner #5 tube hard limit).
+  if (aux6_s == 1) {
+    const char *fault = nullptr;
+    if (!pump_ok) fault = "Watchdog Shutoff (pump off)";
+    else if (!swg_ok) fault = "Watchdog Shutoff (SWG off)";
+    else if (!ph_fresh) fault = "Watchdog Shutoff (pH stale)";
+    else if (on_s >= 360u) fault = "Watchdog Shutoff (6m max)";
+    else if (acid_batch_active_ && ((now_ms - acid_batch_start_ms_) / 1000u) >= acid_dose_s_) {
+      // Normal batch completion.
+      acid_batch_active_ = false;
+      acid_cooldown_until_ms_ = now_ms + acid_cooldown_s_ * 1000u;
+      if (now_ms - acid_last_cmd_ms_ >= 5000u) {
+        acid_last_cmd_ms_ = now_ms;
+        ESP_LOGI(TAG, "ACID BATCH COMPLETE (%us), turning AUX6 OFF", static_cast<unsigned>(on_s));
+        set_acid_dosing(false);
+      }
+      publish_acid_status_("Cooldown");
+      return;
+    }
+
+    if (fault != nullptr) {
+      acid_batch_active_ = false;
+      acid_cooldown_until_ms_ = now_ms + acid_cooldown_s_ * 1000u;
+      if (now_ms - acid_last_cmd_ms_ >= 5000u) {
+        acid_last_cmd_ms_ = now_ms;
+        ESP_LOGE(TAG, "ACID %s (on=%us), commanding AUX6 OFF", fault, static_cast<unsigned>(on_s));
+        set_acid_dosing(false);
+      }
+      publish_acid_status_(fault);
+      return;
+    }
+    publish_acid_status_(acid_batch_active_ ? "Dosing" : "Running (manual)");
+    return;
+  }
+
+  // AUX6 is OFF.
+  if (!acid_auto_enabled_ || !interlock_) {
+    acid_batch_active_ = false;
+    publish_acid_status_("Disabled");
+    return;
+  }
+
+  if (acid_cooldown_until_ms_ != 0 && static_cast<int32_t>(acid_cooldown_until_ms_ - now_ms) > 0) {
+    publish_acid_status_("Cooldown");
+    return;
+  }
+  if (acid_daily_s_ >= acid_max_daily_s_) {
+    publish_acid_status_("Daily Limit Reached");
+    return;
+  }
+  if (!pump_ok) {
+    publish_acid_status_("Waiting (pump off)");
+    return;
+  }
+  if (!swg_ok) {
+    publish_acid_status_("Waiting (SWG off)");
+    return;
+  }
+  if (!ph_fresh) {
+    publish_acid_status_("Waiting (pH stale)");
+    return;
+  }
+
+  if (ph_v >= acid_target_ph_) {
+    if (now_ms - acid_last_cmd_ms_ >= 10000u) {
+      acid_last_cmd_ms_ = now_ms;
+      acid_batch_active_ = true;
+      acid_batch_start_ms_ = now_ms;
+      ESP_LOGW(TAG, "ACID DOSE START: pH=%.2f >= %.2f for %us", ph_v, acid_target_ph_,
+               static_cast<unsigned>(acid_dose_s_));
+      set_acid_dosing(true);
+    }
+    publish_acid_status_("Dosing");
+  } else {
+    publish_acid_status_("Idle");
+  }
+}
+
 void JandyAqualink::set_iaq_presence(bool on) {
   portENTER_CRITICAL(&mux_);
   iaq_presence_ = on;
@@ -1223,8 +1384,12 @@ void JandyAqualink::observe_frame(const jandy::Frame &f) {
   }
   const auto &chemistry = chemistry_reader_.state;
   if (chemistry.has_ph || chemistry.has_orp) {
+    uint32_t now_ms = millis();
     portENTER_CRITICAL(&mux_);
-    if (chemistry.has_ph) ph_ = chemistry.ph;
+    if (chemistry.has_ph) {
+      ph_ = chemistry.ph;
+      last_ph_ms_ = now_ms;
+    }
     if (chemistry.has_orp) orp_ = chemistry.orp;
     portEXIT_CRITICAL(&mux_);
   }
@@ -1284,12 +1449,23 @@ void JandyAqualink::observe_frame(const jandy::Frame &f) {
     jandy::KeypadStatus ks = jandy::decode_keypad_status(f);
     if (ks.valid) {
       int8_t spa = ks.spa_mode, blow = ks.air_blower, pump = ks.filter_pump, clean = ks.cleaner;
-      bool spa_ch, blow_ch, pump_ch, clean_ch;
+      int8_t aux6 = -1;
+      if (aux6_status_byte_ >= 0) {
+        aux6 = (f.data_len() > static_cast<size_t>(aux6_status_byte_) &&
+                ((f.data()[aux6_status_byte_] >> aux6_status_bit_) & 1u))
+                   ? 1
+                   : 0;
+      }
+      bool spa_ch, blow_ch, pump_ch, clean_ch, aux6_ch = false;
       portENTER_CRITICAL(&mux_);
       spa_ch = spa != cs_spa_;
       blow_ch = blow != cs_blower_;
       pump_ch = pump != cs_pump_;
       clean_ch = clean != cs_cleaner_;
+      if (aux6 >= 0) {
+        aux6_ch = aux6 != cs_aux6_;
+        cs_aux6_ = aux6;
+      }
       cs_spa_ = spa;
       cs_blower_ = blow;
       cs_pump_ = pump;
@@ -1299,6 +1475,7 @@ void JandyAqualink::observe_frame(const jandy::Frame &f) {
       if (blow_ch) ESP_LOGW(TAG, "STATUS CHANGE: air_blower -> %d", blow);
       if (pump_ch) ESP_LOGW(TAG, "STATUS CHANGE: filter_pump -> %d", pump);
       if (clean_ch) ESP_LOGW(TAG, "STATUS CHANGE: cleaner -> %d", clean);
+      if (aux6_ch) ESP_LOGW(TAG, "STATUS CHANGE: aux6 (acid) -> %d", aux6);
     }
   }
 
@@ -1429,23 +1606,26 @@ void JandyAqualink::loop() {
       salt_chlorinator_generating_bs_->publish_state(generating != 0);
       pub_swg_generating_ = generating;
     }
-    if (ph_sensor_ && ph >= 0.0f && ph != pub_ph_) {
-      ph_sensor_->publish_state(ph);
-      pub_ph_ = ph;
-    }
-    if (orp_sensor_ && orp >= 0 && orp != pub_orp_) {
-      orp_sensor_->publish_state(orp);
-      pub_orp_ = orp;
-    }
+  }
+  if (ph_sensor_ && ph >= 0.0f && ph != pub_ph_) {
+    ph_sensor_->publish_state(ph);
+    pub_ph_ = ph;
+  }
+  if (orp_sensor_ && orp >= 0 && orp != pub_orp_) {
+    orp_sensor_->publish_state(orp);
+    pub_orp_ = orp;
   }
 
   {
-    int8_t spa_s, blow_s, pump_s, clean_s;
+    int8_t spa_s, blow_s, pump_s, clean_s, aux6_s;
+    uint32_t ph_ms;
     portENTER_CRITICAL(&mux_);
     spa_s = cs_spa_;
     blow_s = cs_blower_;
     pump_s = cs_pump_;
     clean_s = cs_cleaner_;
+    aux6_s = cs_aux6_;
+    ph_ms = last_ph_ms_;
     portEXIT_CRITICAL(&mux_);
     if (spa_mode_bs_ && spa_s >= 0 && spa_s != pub_cs_spa_) {
       spa_mode_bs_->publish_state(spa_s != 0);
@@ -1463,6 +1643,11 @@ void JandyAqualink::loop() {
       cleaner_bs_->publish_state(clean_s != 0);
       pub_cs_cleaner_ = clean_s;
     }
+    if (acid_dosing_bs_ && aux6_s >= 0 && aux6_s != pub_cs_aux6_) {
+      acid_dosing_bs_->publish_state(aux6_s != 0);
+      pub_cs_aux6_ = aux6_s;
+    }
+    run_acid_controller_(millis(), pump_s, aux6_s, swg_percent, swg_status, ph, ph_ms);
     int8_t he_p, he_s;
     portENTER_CRITICAL(&mux_);
     he_p = he_pool_;
