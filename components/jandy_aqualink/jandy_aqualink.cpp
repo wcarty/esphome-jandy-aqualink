@@ -93,7 +93,8 @@ void JandyAqualink::task_loop() {
         continue;
       }
 
-      if (jandy::is_poll_to(f, keypad_addr_)) {
+      if (f.dest() == keypad_addr_ &&
+          (f.cmd() == jandy::CMD_POLL || f.cmd() == jandy::CMD_STATUS || f.cmd() == 0x03)) {
         // Pick the reply: inert presence by default, a one-shot key only when
         // the interlock is on AND a key is armed. Consume it atomically. No
         // logging happens before the write, so the reply stays in-slot.
