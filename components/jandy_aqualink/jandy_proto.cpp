@@ -179,7 +179,7 @@ void ChemistryReader::feed(const Frame &f) {
 }
 
 void EpumpReader::feed(const Frame &f) {
-  if (f.dest() >= 0x78 && f.dest() <= 0x7B) {
+  if ((f.dest() >= 0x78 && f.dest() <= 0x7B) || (f.dest() >= 0xE0 && f.dest() <= 0xE3)) {
     awaiting_reply_ = (f.cmd() == 0x44 || f.cmd() == 0x45);
     return;
   }
