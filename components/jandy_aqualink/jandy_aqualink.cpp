@@ -102,7 +102,7 @@ void JandyAqualink::task_loop() {
         uint8_t keyack[11];
         int sent_key = -1;
         portENTER_CRITICAL(&mux_);
-        if (interlock_ && armed_key_ >= 0) {
+        if (interlock_ && armed_key_ >= 0 && f.cmd() != jandy::CMD_POLL) {
           sent_key = armed_key_;
           armed_key_ = -1;  // one press, one time
         }
