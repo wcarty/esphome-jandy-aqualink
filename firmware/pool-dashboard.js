@@ -4,6 +4,8 @@
   const SWITCHES = [
     { key: "pool_filter_pump", name: "Pool Filter Pump", label: "Filter Pump" },
     { key: "pool_spa_mode", name: "Pool Spa Mode", label: "Spa Mode" },
+    { key: "pool_heater", name: "Pool Heater", label: "Pool Heater" },
+    { key: "spa_heater", name: "Spa Heater", label: "Spa Heater" },
     { key: "spa_booster_pump", name: "Spa Booster Pump", label: "Spa Booster Pump" },
     { key: "pool_air_blower", name: "Pool Air Blower", label: "Air Blower" },
     { key: "pool_light", name: "Pool Light", label: "Pool Light" },

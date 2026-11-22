@@ -106,11 +106,13 @@ static constexpr uint8_t KEY_MENU = 0x09, KEY_CANCEL = 0x0E, KEY_LEFT = 0x13,
 // meaning. AUX6 is a DLE byte, so its ACK must be byte-stuffed on the wire.
 static constexpr uint8_t KEY_SPA = 0x01, KEY_PUMP = 0x02, KEY_AUX1 = 0x05,
                          KEY_AUX2 = 0x0A, KEY_AUX3 = 0x0F, KEY_AUX4 = 0x06,
-                         KEY_AUX5 = 0x0B, KEY_AUX6 = 0x10;
+                         KEY_AUX5 = 0x0B, KEY_AUX6 = 0x10,
+                         KEY_POOL_HTR = 0x12, KEY_SPA_HTR = 0x17;
 
 inline bool is_direct_aux_key(uint8_t key) {
   return key == KEY_SPA || key == KEY_PUMP || key == KEY_AUX1 || key == KEY_AUX2 ||
-         key == KEY_AUX3 || key == KEY_AUX4 || key == KEY_AUX5 || key == KEY_AUX6;
+         key == KEY_AUX3 || key == KEY_AUX4 || key == KEY_AUX5 || key == KEY_AUX6 ||
+         key == KEY_POOL_HTR || key == KEY_SPA_HTR;
 }
 
 inline bool is_safe_nav_key(uint8_t key) {
