@@ -188,6 +188,7 @@ class JandyAqualink : public Component {
   void send_swg_set_(uint8_t percent);
   void arm_aux_key_(uint8_t key, const char *name);
   void set_tracked_toggle_(bool on, int8_t current, uint8_t key, const char *name);
+  void write_bus_(const uint8_t *data, size_t len);
   void run_acid_controller_(uint32_t now_ms, int8_t pump_s, int8_t aux6_s, int swg_pct, int swg_st, float ph_v,
                             uint32_t last_ph_ms);
   void publish_acid_status_(const char *status);

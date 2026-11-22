@@ -2,6 +2,7 @@
 #include "esphome/core/log.h"
 #include "esphome/core/hal.h"  // millis()
 
+#include "driver/gpio.h"
 #include "driver/uart.h"
 #include "esp_timer.h"
 
@@ -29,11 +30,12 @@ void JandyAqualink::setup() {
 
   uart_driver_install(JANDY_UART, 2048, 0, 0, nullptr, 0);
   uart_param_config(JANDY_UART, &cfg);
-  int rts_pin = flow_control_pin_ >= 0 ? flow_control_pin_ : UART_PIN_NO_CHANGE;
-  uart_set_pin(JANDY_UART, tx_pin_, rx_pin_, rts_pin, UART_PIN_NO_CHANGE);
+  uart_set_pin(JANDY_UART, tx_pin_, rx_pin_, UART_PIN_NO_CHANGE, UART_PIN_NO_CHANGE);
   if (flow_control_pin_ >= 0) {
-    uart_set_mode(JANDY_UART, UART_MODE_RS485_HALF_DUPLEX);
-    uart_set_line_inverse(JANDY_UART, UART_SIGNAL_RTS_INV);
+    gpio_num_t fc = static_cast<gpio_num_t>(flow_control_pin_);
+    gpio_reset_pin(fc);
+    gpio_set_direction(fc, GPIO_MODE_OUTPUT);
+    gpio_set_level(fc, 0);  // idle in RX mode so we never jam the RS485 bus
   }
 
   // Pin the bus state machine to core 1, high priority, so WiFi on core 0 and
@@ -42,6 +44,18 @@ void JandyAqualink::setup() {
   xTaskCreatePinnedToCore(&JandyAqualink::task_trampoline, "jandy_bus", 8192, this, 20, &task_, 1);
   ESP_LOGI(TAG, "started: tx=%d rx=%d flow_control=%d baud=%d keypad=0x%02X",
            tx_pin_, rx_pin_, flow_control_pin_, baud_, keypad_addr_);
+}
+
+void JandyAqualink::write_bus_(const uint8_t *data, size_t len) {
+  if (flow_control_pin_ >= 0) {
+    gpio_num_t fc = static_cast<gpio_num_t>(flow_control_pin_);
+    gpio_set_level(fc, 1);
+    uart_write_bytes(JANDY_UART, reinterpret_cast<const char *>(data), len);
+    uart_wait_tx_done(JANDY_UART, pdMS_TO_TICKS(50));
+    gpio_set_level(fc, 0);
+  } else {
+    uart_write_bytes(JANDY_UART, reinterpret_cast<const char *>(data), len);
+  }
 }
 
 void JandyAqualink::task_trampoline(void *arg) { static_cast<JandyAqualink *>(arg)->task_loop(); }
@@ -107,7 +121,7 @@ void JandyAqualink::task_loop() {
         }
 
         int64_t t0 = esp_timer_get_time();
-        uart_write_bytes(JANDY_UART, reinterpret_cast<const char *>(ack), ack_len);
+        write_bus_(ack, ack_len);
         uint32_t dt = static_cast<uint32_t>(esp_timer_get_time() - t0);
         portENTER_CRITICAL(&mux_);
         frames_++;
@@ -300,7 +314,7 @@ void JandyAqualink::task_loop() {
           ack = keyack;
         }
         int64_t t0 = esp_timer_get_time();
-        uart_write_bytes(JANDY_UART, reinterpret_cast<const char *>(ack), jandy::ACK_PRESENCE_LEN);
+        write_bus_(ack, jandy::ACK_PRESENCE_LEN);
         uint32_t dt = static_cast<uint32_t>(esp_timer_get_time() - t0);
         portENTER_CRITICAL(&mux_);
         frames_++;
@@ -812,14 +826,14 @@ void JandyAqualink::survey_press(uint8_t key, uint8_t expect_page) {
 void JandyAqualink::send_iaq_ack_(uint8_t key) {
   uint8_t ack[jandy::ACK_PRESENCE_LEN];
   jandy::build_ack(jandy::ACK_IAQ_TOUCH, key, ack);
-  uart_write_bytes(JANDY_UART, reinterpret_cast<const char *>(ack), jandy::ACK_PRESENCE_LEN);
+  write_bus_(ack, jandy::ACK_PRESENCE_LEN);
 }
 
 // core-1: transmit the 0x24 value frame on the bus.
 void JandyAqualink::send_vsp_set_(uint16_t rpm) {
   uint8_t out[32];
   size_t n = jandy::build_vsp_set_frame(rpm, out, sizeof(out));
-  uart_write_bytes(JANDY_UART, reinterpret_cast<const char *>(out), n);
+  write_bus_(out, n);
   ESP_LOGW(TAG, "VSP value frame sent: %u RPM (%u bytes)", rpm, static_cast<unsigned>(n));
 }
 
@@ -854,7 +868,7 @@ void JandyAqualink::set_heater_setpoint(bool is_spa, uint16_t temp) {
 void JandyAqualink::send_settemp_set_(uint16_t temp) {
   uint8_t out[32];
   size_t n = jandy::build_settemp_frame(temp, out, sizeof(out));
-  uart_write_bytes(JANDY_UART, reinterpret_cast<const char *>(out), n);
+  write_bus_(out, n);
   ESP_LOGW(TAG, "setpoint value frame sent: %uF (%u bytes)", temp, static_cast<unsigned>(n));
 }
 
@@ -881,7 +895,7 @@ void JandyAqualink::set_swg_percent(uint16_t percent) {
 void JandyAqualink::send_swg_set_(uint8_t percent) {
   uint8_t out[32];
   size_t n = jandy::build_swg_set_frame(percent, out, sizeof(out));
-  uart_write_bytes(JANDY_UART, reinterpret_cast<const char *>(out), n);
+  write_bus_(out, n);
   ESP_LOGW(TAG, "AquaPure output value frame sent: %u%%", static_cast<unsigned>(percent));
 }
 
