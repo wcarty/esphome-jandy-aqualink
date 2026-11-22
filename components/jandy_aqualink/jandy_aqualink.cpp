@@ -1525,6 +1525,13 @@ void JandyAqualink::observe_frame(const jandy::Frame &f) {
   }
 
   const auto &s = reader_.state;
+  if (s.has_air || s.has_pool || s.has_spa) {
+    portENTER_CRITICAL(&mux_);
+    if (s.has_air) t_air_ = s.air;
+    if (s.has_pool) t_pool_ = s.pool;
+    if (s.has_spa) t_spa_ = s.spa;
+    portEXIT_CRITICAL(&mux_);
+  }
   if (s.has_air && s.air != last_air_) {
     last_air_ = s.air;
     ESP_LOGW(TAG, "DECODED air=%d F", s.air);
