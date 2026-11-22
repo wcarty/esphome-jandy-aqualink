@@ -33,6 +33,7 @@ void JandyAqualink::setup() {
   uart_set_pin(JANDY_UART, tx_pin_, rx_pin_, rts_pin, UART_PIN_NO_CHANGE);
   if (flow_control_pin_ >= 0) {
     uart_set_mode(JANDY_UART, UART_MODE_RS485_HALF_DUPLEX);
+    uart_set_line_inverse(JANDY_UART, UART_SIGNAL_RTS_INV);
   }
 
   // Pin the bus state machine to core 1, high priority, so WiFi on core 0 and
