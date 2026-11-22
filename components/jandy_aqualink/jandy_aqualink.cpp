@@ -60,6 +60,13 @@ void JandyAqualink::task_loop() {
     int n = uart_read_bytes(JANDY_UART, buf, sizeof(buf), pdMS_TO_TICKS(1));
     if (n <= 0) continue;
 
+    if (pentair_reader_.feed(buf, static_cast<size_t>(n))) {
+      portENTER_CRITICAL(&mux_);
+      if (pentair_reader_.state.has_rpm) pump_rpm_ = pentair_reader_.state.rpm;
+      if (pentair_reader_.state.has_watts) pump_watts_ = pentair_reader_.state.watts;
+      portEXIT_CRITICAL(&mux_);
+    }
+
     frames.clear();
     extractor.feed(buf, static_cast<size_t>(n), frames);
 
@@ -1199,6 +1206,13 @@ void JandyAqualink::observe_frame(const jandy::Frame &f) {
   reader_.feed(f);
   swg_reader_.feed(f);
   chemistry_reader_.feed(f);
+  epump_reader_.feed(f);
+  if (epump_reader_.state.has_rpm || epump_reader_.state.has_watts) {
+    portENTER_CRITICAL(&mux_);
+    if (epump_reader_.state.has_rpm) pump_rpm_ = epump_reader_.state.rpm;
+    if (epump_reader_.state.has_watts) pump_watts_ = epump_reader_.state.watts;
+    portEXIT_CRITICAL(&mux_);
+  }
   const auto &swg = swg_reader_.state;
   if (swg.has_percent || swg.has_ppm || swg.has_status) {
     portENTER_CRITICAL(&mux_);

@@ -307,6 +307,8 @@ class JandyAqualink : public Component {
   jandy::Reader reader_;
   jandy::SwgReader swg_reader_;
   jandy::ChemistryReader chemistry_reader_;
+  jandy::EpumpReader epump_reader_;
+  jandy::PentairPumpReader pentair_reader_;
   struct CensusEntry {
     uint16_t key;                 // (dest << 8) | cmd
     std::vector<uint8_t> sample;  // first raw frame seen of this type

@@ -272,6 +272,36 @@ class ChemistryReader {
   ChemistryStatus state;
 };
 
+struct PumpLiveStatus {
+  bool has_rpm = false;
+  bool has_watts = false;
+  int rpm = 0;
+  int watts = 0;
+};
+
+// Passive Jandy ePump RS485 reader (addresses 0x78-0x7B, replies to 0x00 cmd 0x1F).
+class EpumpReader {
+ public:
+  void feed(const Frame &f);
+  PumpLiveStatus state;
+
+ private:
+  bool awaiting_reply_ = false;
+};
+
+// Passive Pentair IntelliFlo RS485 reader (A5 00 <dest> <from:0x60..0x6F> 07 <len> ...).
+class PentairPumpReader {
+ public:
+  bool feed(const uint8_t *buf, size_t n);
+  PumpLiveStatus state;
+
+ private:
+  static constexpr size_t MAX_PKT = 64;
+  uint8_t pkt_[MAX_PKT]{};
+  size_t pos_ = 0;
+  size_t expected_ = 0;
+};
+
 // Pairs keypad display labels with the value line that immediately follows, and
 // decodes the binary pool-temp status frame. Feed it checksum-valid frames.
 class Reader {

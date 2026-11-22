@@ -150,6 +150,79 @@ void ChemistryReader::feed(const Frame &f) {
   }
 }
 
+void EpumpReader::feed(const Frame &f) {
+  if (f.dest() >= 0x78 && f.dest() <= 0x7B) {
+    awaiting_reply_ = (f.cmd() == 0x44 || f.cmd() == 0x45);
+    return;
+  }
+  if (!awaiting_reply_) return;
+  awaiting_reply_ = false;
+  if (f.dest() != 0x00 || f.cmd() != 0x1F || f.data_len() < 4) return;
+  uint8_t sub = f.data()[0];
+  if (sub == 0x44) {
+    int rpm = ((static_cast<int>(f.data()[3]) << 8) | f.data()[2]) / 4;
+    if (rpm >= 0 && rpm <= 4000) {
+      state.rpm = rpm;
+      state.has_rpm = true;
+    }
+  } else if (sub == 0x45 && f.data_len() >= 5) {
+    int watts = (static_cast<int>(f.data()[4]) << 8) | f.data()[3];
+    if (watts >= 0 && watts <= 5000) {
+      state.watts = watts;
+      state.has_watts = true;
+    }
+  }
+}
+
+bool PentairPumpReader::feed(const uint8_t *buf, size_t n) {
+  bool updated = false;
+  for (size_t i = 0; i < n; ++i) {
+    uint8_t b = buf[i];
+    if (pos_ == 0) {
+      if (b == 0xA5) pkt_[pos_++] = b;
+      continue;
+    }
+    if (pos_ == 1) {
+      if (b == 0x00) {
+        pkt_[pos_++] = b;
+      } else {
+        pos_ = (b == 0xA5) ? 1 : 0;
+        if (pos_ == 1) pkt_[0] = 0xA5;
+      }
+      continue;
+    }
+    if (pos_ < MAX_PKT) pkt_[pos_++] = b;
+    if (pos_ == 6) {
+      size_t payload_len = pkt_[5];
+      expected_ = 6 + payload_len + 2;
+      if (expected_ > MAX_PKT || payload_len < 10) {
+        pos_ = 0;
+        expected_ = 0;
+      }
+      continue;
+    }
+    if (expected_ > 0 && pos_ == expected_) {
+      uint16_t sum = 0;
+      for (size_t k = 0; k < expected_ - 2; ++k) sum += pkt_[k];
+      uint16_t rx_sum = (static_cast<uint16_t>(pkt_[expected_ - 2]) << 8) | pkt_[expected_ - 1];
+      if (sum == rx_sum && pkt_[3] >= 0x60 && pkt_[3] <= 0x6F && pkt_[4] == 0x07 && expected_ >= 15) {
+        int watts = (static_cast<int>(pkt_[9]) << 8) | pkt_[10];
+        int rpm = (static_cast<int>(pkt_[11]) << 8) | pkt_[12];
+        if (rpm >= 0 && rpm <= 4000 && watts >= 0 && watts <= 5000) {
+          state.rpm = rpm;
+          state.watts = watts;
+          state.has_rpm = true;
+          state.has_watts = true;
+          updated = true;
+        }
+      }
+      pos_ = 0;
+      expected_ = 0;
+    }
+  }
+  return updated;
+}
+
 // --- display helpers (mirror jandy/display.py) ---
 
 static int label_key(const std::string &text) {
