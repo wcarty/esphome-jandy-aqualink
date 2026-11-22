@@ -372,6 +372,19 @@ switch:
       sorting_group_id: pool_automation
 
   - platform: template
+    name: "Pool Spillover Waterfall"
+    id: pool_spillover_waterfall
+    icon: "mdi:waterfall"
+    optimistic: true
+    restore_mode: DISABLED
+    turn_on_action:
+      - lambda: "id(jandy_comp).press_aux3();"
+    turn_off_action:
+      - lambda: "id(jandy_comp).press_aux3();"
+    web_server:
+      sorting_group_id: pool_automation
+
+  - platform: template
     name: "Pool Light"
     id: pool_light_control
     icon: "mdi:lightbulb"

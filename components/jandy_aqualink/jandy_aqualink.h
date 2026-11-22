@@ -57,6 +57,7 @@ class JandyAqualink : public Component {
   // poll, and only if the interlock is on and the key is in the allowlist.
   void arm_key(uint8_t key);
   void press_aux2();
+  void press_aux3();
   void press_aux6();
   void set_interlock(bool on);
   bool interlock() const { return interlock_; }

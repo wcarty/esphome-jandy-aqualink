@@ -395,6 +395,8 @@ void JandyAqualink::arm_aux_key_(uint8_t key, const char *name) {
 
 void JandyAqualink::press_aux2() { arm_aux_key_(jandy::KEY_AUX2, "AUX2"); }
 
+void JandyAqualink::press_aux3() { arm_aux_key_(jandy::KEY_AUX3, "AUX3"); }
+
 void JandyAqualink::press_aux6() { arm_aux_key_(jandy::KEY_AUX6, "AUX6"); }
 
 void JandyAqualink::set_iaq_presence(bool on) {

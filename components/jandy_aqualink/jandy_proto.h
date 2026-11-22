@@ -104,9 +104,11 @@ static constexpr uint8_t KEY_MENU = 0x09, KEY_CANCEL = 0x0E, KEY_LEFT = 0x13,
 // Direct AllButton AUX keys, verified against AquaLinkD aq_serial.h. Unlike
 // iAqualink grid keys, these are circuit-specific and have no page-dependent
 // meaning. AUX6 is a DLE byte, so its ACK must be byte-stuffed on the wire.
-static constexpr uint8_t KEY_AUX2 = 0x0A, KEY_AUX6 = 0x10;
+static constexpr uint8_t KEY_AUX2 = 0x0A, KEY_AUX3 = 0x0F, KEY_AUX6 = 0x10;
 
-inline bool is_direct_aux_key(uint8_t key) { return key == KEY_AUX2 || key == KEY_AUX6; }
+inline bool is_direct_aux_key(uint8_t key) {
+  return key == KEY_AUX2 || key == KEY_AUX3 || key == KEY_AUX6;
+}
 
 inline bool is_safe_nav_key(uint8_t key) {
   return key == KEY_MENU || key == KEY_CANCEL || key == KEY_LEFT || key == KEY_RIGHT ||
