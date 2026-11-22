@@ -276,9 +276,9 @@ static int label_key(const std::string &text) {
     }
   }
   while (!n.empty() && n.back() == ' ') n.pop_back();
-  if (n == "AIR TEMP") return 1;
-  if (n == "POOL TEMP") return 2;
-  if (n == "SPA TEMP") return 3;
+  if (n.rfind("AIR TEMP", 0) == 0) return 1;
+  if (n.rfind("POOL TEMP", 0) == 0) return 2;
+  if (n.rfind("SPA TEMP", 0) == 0) return 3;
   if (n == "WATER TEMP") return 2;
   return 0;
 }
