@@ -134,6 +134,34 @@ const char *swg_status_name(uint8_t status) {
 }
 
 void ChemistryReader::feed(const Frame &f) {
+  // Track requests to chemistry probe controllers (0x84 = pH, 0x86 = ORP).
+  if ((f.dest() == 0x84 || f.dest() == 0x86) && f.cmd() == 0x20) {
+    awaiting_chem_reply_ = true;
+    return;
+  }
+  if (awaiting_chem_reply_) {
+    awaiting_chem_reply_ = false;
+    if (f.dest() == 0x00 && f.cmd() == 0x28 && f.data_len() >= 4 && f.data()[0] == 0x20) {
+      uint8_t probe = f.data()[1];
+      int counts = (static_cast<int>(f.data()[2]) << 8) | f.data()[3];
+      if (probe == 0x01 && counts > 0 && counts <= 4095) {
+        float v = (static_cast<float>(counts) / 4095.0f) * 3.3f;
+        float v_elec_mv = (v - 1.650f) * 1000.0f / 12.745f;
+        float ph = 7.0f + (v_elec_mv / 59.16f);  // 25°C Nernst slope
+        if (ph >= 5.0f && ph <= 10.0f) {
+          state.ph = ph;
+          state.has_ph = true;
+        }
+      } else if (probe == 0x02 && counts > 0 && counts <= 4095) {
+        int orp = static_cast<int>(-1909.25f + 0.93294f * static_cast<float>(counts) + 0.5f);
+        if (orp >= 100 && orp <= 1200) {
+          state.orp = orp;
+          state.has_orp = true;
+        }
+      }
+      return;
+    }
+  }
   if (f.cmd() != 0x21 || f.data_len() < 2) return;
   // TrueSense emits a compact tag/value sequence. Ignore unknown tags and
   // reject implausible values so unrelated 0x21 traffic cannot update sensors.

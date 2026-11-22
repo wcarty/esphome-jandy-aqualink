@@ -270,6 +270,9 @@ class ChemistryReader {
  public:
   void feed(const Frame &f);
   ChemistryStatus state;
+
+ private:
+  bool awaiting_chem_reply_ = false;
 };
 
 struct PumpLiveStatus {
