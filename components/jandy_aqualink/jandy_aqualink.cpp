@@ -1383,6 +1383,18 @@ void JandyAqualink::observe_frame(const jandy::Frame &f) {
   swg_reader_.feed(f);
   chemistry_reader_.feed(f);
   epump_reader_.feed(f);
+  if (!iaq_presence_ && f.dest() == 0x33) {
+    iaq_reader_.feed(f);
+    const auto &ts = iaq_reader_.state;
+    portENTER_CRITICAL(&mux_);
+    if (ts.has_air) t_air_ = ts.air;
+    if (ts.has_pool) t_pool_ = ts.pool;
+    if (ts.has_spa) t_spa_ = ts.spa;
+    if (iaq_reader_.has_pool_heat()) he_pool_ = iaq_reader_.pool_heat_enabled() ? 1 : 0;
+    if (iaq_reader_.has_spa_heat()) he_spa_ = iaq_reader_.spa_heat_enabled() ? 1 : 0;
+    if (iaq_reader_.has_pool_light()) home_pool_light_ = iaq_reader_.pool_light_on() ? 1 : 0;
+    portEXIT_CRITICAL(&mux_);
+  }
   if (epump_reader_.state.has_rpm || epump_reader_.state.has_watts) {
     portENTER_CRITICAL(&mux_);
     if (epump_reader_.state.has_rpm) iaq_rpm_ = epump_reader_.state.rpm;

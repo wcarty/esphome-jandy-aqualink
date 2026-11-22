@@ -102,14 +102,20 @@ void SwgReader::feed(const Frame &f) {
       state.percent = f.data()[0];
       state.has_percent = true;
     }
-    awaiting_reply_ = f.cmd() == CMD_POLL;
+    awaiting_reply_ = (f.cmd() == CMD_POLL || f.cmd() == SWG_CMD_PERCENT);
     return;
   }
 
   if (!awaiting_reply_) return;
   awaiting_reply_ = false;
-  if (f.cmd() != SWG_CMD_PPM || f.data_len() < 2) return;
-  state.ppm = f.data()[0] * 100;
+  if (f.data_len() < 2) return;
+  if (f.cmd() == SWG_CMD_PPM) {
+    state.ppm = f.data()[0] * 100;
+  } else if (f.cmd() == 0x12) {
+    state.ppm = f.data()[0] * 50;
+  } else {
+    return;
+  }
   state.status = f.data()[1];
   state.has_ppm = true;
   state.has_status = true;
