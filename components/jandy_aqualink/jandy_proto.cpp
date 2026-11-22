@@ -343,14 +343,15 @@ void Reader::feed(const Frame &f) {
   }
   if (pending_ != 0) {
     int val;
-    if (parse_leading_int(text, val)) {
-      if (pending_ == 1) {
+    if (text.find(':') == std::string::npos && text.find('/') == std::string::npos &&
+        parse_leading_int(text, val)) {
+      if (pending_ == 1 && val >= 0 && val <= 125) {
         state.air = val;
         state.has_air = true;
-      } else if (pending_ == 2) {
+      } else if (pending_ == 2 && val >= 35 && val <= 115) {
         state.pool = val;
         state.has_pool = true;
-      } else if (pending_ == 3) {
+      } else if (pending_ == 3 && val >= 35 && val <= 115) {
         state.spa = val;
         state.has_spa = true;
       }
