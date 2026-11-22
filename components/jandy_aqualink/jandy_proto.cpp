@@ -320,6 +320,24 @@ void Reader::feed(const Frame &f) {
   }
   int key = label_key(text);
   if (key != 0) {
+    // Support single-line AllButton messages like "POOL TEMP  82 F" or "AIR TEMP 89 F".
+    size_t pos = 0;
+    while (pos < text.size() && (text[pos] < '0' || text[pos] > '9')) ++pos;
+    int val = 0;
+    if (pos < text.size() && parse_leading_int(text.substr(pos), val) && val >= 0 && val <= 125) {
+      if (key == 1) {
+        state.air = val;
+        state.has_air = true;
+      } else if (key == 2) {
+        state.pool = val;
+        state.has_pool = true;
+      } else if (key == 3) {
+        state.spa = val;
+        state.has_spa = true;
+      }
+      pending_ = 0;
+      return;
+    }
     pending_ = key;
     return;
   }
