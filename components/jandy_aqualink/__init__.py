@@ -15,6 +15,7 @@ JandyAqualink = jandy_ns.class_("JandyAqualink", cg.Component)
 
 CONF_TX_PIN = "tx_pin"
 CONF_RX_PIN = "rx_pin"
+CONF_FLOW_CONTROL_PIN = "flow_control_pin"
 CONF_BAUD = "baud_rate"
 CONF_KEYPAD_ADDRESS = "keypad_address"
 CONF_POLLS_ANSWERED = "polls_answered"
@@ -52,6 +53,7 @@ CONFIG_SCHEMA = cv.Schema(
         cv.GenerateID(): cv.declare_id(JandyAqualink),
         cv.Optional(CONF_TX_PIN, default=19): cv.int_,
         cv.Optional(CONF_RX_PIN, default=22): cv.int_,
+        cv.Optional(CONF_FLOW_CONTROL_PIN): cv.int_,
         cv.Optional(CONF_BAUD, default=9600): cv.positive_int,
         cv.Optional(CONF_KEYPAD_ADDRESS, default=0x08): cv.int_range(min=0, max=255),
         cv.Optional(CONF_POLLS_ANSWERED): sensor.sensor_schema(
@@ -148,6 +150,8 @@ async def to_code(config):
 
     cg.add(var.set_tx_pin(config[CONF_TX_PIN]))
     cg.add(var.set_rx_pin(config[CONF_RX_PIN]))
+    if CONF_FLOW_CONTROL_PIN in config:
+        cg.add(var.set_flow_control_pin(config[CONF_FLOW_CONTROL_PIN]))
     cg.add(var.set_baud(config[CONF_BAUD]))
     cg.add(var.set_keypad_address(config[CONF_KEYPAD_ADDRESS]))
 

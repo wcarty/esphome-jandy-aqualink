@@ -15,11 +15,11 @@ esp32:
 wifi:
   ssid: !secret wifi_ssid
   password: !secret wifi_password
-  manual_ip:
-    # Example only; set to your device's static IP (or remove for DHCP).
-    static_ip: 192.168.4.51
-    gateway: 192.168.4.1
-    subnet: 255.255.255.0
+  # Uncomment to assign a static IP instead of using DHCP:
+  # manual_ip:
+  #   static_ip: 192.168.4.51
+  #   gateway: 192.168.4.1
+  #   subnet: 255.255.255.0
   ap:
     ssid: "Pool Bridge Fallback"
     password: !secret ap_fallback_password
@@ -71,8 +71,7 @@ web_server:
       sorting_weight: 90
 
 external_components:
-  # This private repository is the component source. refresh: 0s fetches the
-  # latest version on each compile.
+  # Fetches the latest component from this repository on each compile.
   - source: github://wcarty/esphome-jandy-aqualink
     refresh: 0s
 
@@ -85,6 +84,7 @@ jandy_aqualink:
   id: jandy_comp
   tx_pin: 19
   rx_pin: 22
+  # flow_control_pin: 21  # Optional: DE/RE pin for transceivers without auto-direction (e.g., Waveshare ESP32-S3-RS485-CAN)
   baud_rate: 9600
   keypad_address: 0x08   # a free AllButton keypad slot (0x08-0x0B); see README
   polls_answered:

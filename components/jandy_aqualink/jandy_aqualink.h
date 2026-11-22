@@ -27,6 +27,7 @@ class JandyAqualink : public Component {
 
   void set_tx_pin(int p) { tx_pin_ = p; }
   void set_rx_pin(int p) { rx_pin_ = p; }
+  void set_flow_control_pin(int p) { flow_control_pin_ = p; }
   void set_baud(int b) { baud_ = b; }
   void set_keypad_address(uint8_t a) { keypad_addr_ = a; }
   void set_polls_sensor(sensor::Sensor *s) { polls_sensor_ = s; }
@@ -172,6 +173,7 @@ class JandyAqualink : public Component {
 
   int tx_pin_{19};
   int rx_pin_{22};
+  int flow_control_pin_{-1};
   int baud_{9600};
   uint8_t keypad_addr_{0x08};
 

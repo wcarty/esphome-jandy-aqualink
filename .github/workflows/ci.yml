@@ -1,0 +1,39 @@
+name: CI
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+    branches: [master]
+
+jobs:
+  tests:
+    name: Protocol unit tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install pytest
+        run: pip install pytest
+      - name: Run unit tests
+        run: pytest -v
+
+  esphome:
+    name: ESPHome firmware compile
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install ESPHome
+        run: pip install esphome
+      - name: Prepare example secrets & local component override
+        run: |
+          cp firmware/secrets.yaml.example firmware/secrets.yaml
+          sed -i 's|source: github://wcarty/esphome-jandy-aqualink|source: {type: local, path: ../components}|' firmware/pool-bridge.yaml
+          sed -i '/refresh: 0s/d' firmware/pool-bridge.yaml
+      - name: Validate and compile firmware/pool-bridge.yaml
+        run: esphome compile firmware/pool-bridge.yaml

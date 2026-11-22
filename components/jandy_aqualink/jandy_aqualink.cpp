@@ -29,13 +29,18 @@ void JandyAqualink::setup() {
 
   uart_driver_install(JANDY_UART, 2048, 0, 0, nullptr, 0);
   uart_param_config(JANDY_UART, &cfg);
-  uart_set_pin(JANDY_UART, tx_pin_, rx_pin_, UART_PIN_NO_CHANGE, UART_PIN_NO_CHANGE);
+  int rts_pin = flow_control_pin_ >= 0 ? flow_control_pin_ : UART_PIN_NO_CHANGE;
+  uart_set_pin(JANDY_UART, tx_pin_, rx_pin_, rts_pin, UART_PIN_NO_CHANGE);
+  if (flow_control_pin_ >= 0) {
+    uart_set_mode(JANDY_UART, UART_MODE_RS485_HALF_DUPLEX);
+  }
 
   // Pin the bus state machine to core 1, high priority, so WiFi on core 0 and
   // ESPHome's loop never delay an in-slot reply. The task blocks on the UART
   // read (yielding) whenever there is no data.
   xTaskCreatePinnedToCore(&JandyAqualink::task_trampoline, "jandy_bus", 8192, this, 20, &task_, 1);
-  ESP_LOGI(TAG, "started: tx=%d rx=%d baud=%d keypad=0x%02X", tx_pin_, rx_pin_, baud_, keypad_addr_);
+  ESP_LOGI(TAG, "started: tx=%d rx=%d flow_control=%d baud=%d keypad=0x%02X",
+           tx_pin_, rx_pin_, flow_control_pin_, baud_, keypad_addr_);
 }
 
 void JandyAqualink::task_trampoline(void *arg) { static_cast<JandyAqualink *>(arg)->task_loop(); }
