@@ -631,7 +631,16 @@ void JandyAqualink::set_tracked_toggle_(bool on, int8_t current, uint8_t key, co
 }
 
 void JandyAqualink::set_filter_pump(bool on) {
-  set_tracked_toggle_(on, cs_pump_, jandy::KEY_IAQ_FILTER_PUMP, "Filter Pump");
+  int8_t cur;
+  portENTER_CRITICAL(&mux_);
+  cur = cs_pump_;
+  portEXIT_CRITICAL(&mux_);
+  if (cur < 0) {
+    ESP_LOGW(TAG, "Filter Pump(%d) refused: state not yet known", on ? 1 : 0);
+    return;
+  }
+  if ((cur != 0) == on) return;
+  arm_aux_key_(jandy::KEY_PUMP, on ? "PUMP_ON" : "PUMP_OFF");
 }
 
 void JandyAqualink::set_cleaner(bool on) {
@@ -665,7 +674,7 @@ void JandyAqualink::set_booster_pump(bool on) {
 }
 
 void JandyAqualink::set_pool_light(bool on) {
-  set_tracked_toggle_(on, home_pool_light_, jandy::KEY_IAQ_POOL_LIGHT, "Pool Light");
+  arm_aux_key_(jandy::KEY_AUX1, on ? "AUX1_LIGHT_ON" : "AUX1_LIGHT_OFF");
 }
 
 void JandyAqualink::iaq_nav(uint8_t key) {
