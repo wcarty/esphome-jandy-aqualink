@@ -302,7 +302,7 @@ static bool parse_leading_int(const std::string &text, int &out) {
 }
 
 void Reader::feed(const Frame &f) {
-  if (f.cmd() != CMD_DISPLAY) {
+  if (f.cmd() != CMD_DISPLAY && f.cmd() != 0x03) {
     // Binary pool-temp status: dest 0x38, cmd 0x0C, data[3] = temp (0x5B = 91).
     if (f.dest() == 0x38 && f.cmd() == 0x0C && f.data_len() > 3) {
       state.pool = f.data()[3];
