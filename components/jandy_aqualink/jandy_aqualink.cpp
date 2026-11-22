@@ -651,6 +651,19 @@ void JandyAqualink::set_air_blower(bool on) {
   arm_aux_key_(jandy::KEY_AUX5, on ? "AUX5_BLOWER_ON" : "AUX5_BLOWER_OFF");
 }
 
+void JandyAqualink::set_booster_pump(bool on) {
+  int8_t cur;
+  portENTER_CRITICAL(&mux_);
+  cur = cs_booster_;
+  portEXIT_CRITICAL(&mux_);
+  if (cur < 0) {
+    ESP_LOGW(TAG, "Booster Pump(%d) refused: state not yet known", on ? 1 : 0);
+    return;
+  }
+  if ((cur != 0) == on) return;
+  arm_aux_key_(jandy::KEY_AUX4, on ? "AUX4_BOOSTER_ON" : "AUX4_BOOSTER_OFF");
+}
+
 void JandyAqualink::set_pool_light(bool on) {
   set_tracked_toggle_(on, home_pool_light_, jandy::KEY_IAQ_POOL_LIGHT, "Pool Light");
 }
@@ -1485,7 +1498,8 @@ void JandyAqualink::observe_frame(const jandy::Frame &f) {
     }
     jandy::KeypadStatus ks = jandy::decode_keypad_status(f);
     if (ks.valid) {
-      int8_t spa = ks.spa_mode, blow = ks.air_blower, pump = ks.filter_pump, clean = ks.cleaner;
+      int8_t spa = ks.spa_mode, blow = ks.air_blower, pump = ks.filter_pump, clean = ks.cleaner,
+             boost = ks.booster_pump;
       int8_t aux6 = -1;
       if (aux6_status_byte_ >= 0) {
         aux6 = (f.data_len() > static_cast<size_t>(aux6_status_byte_) &&
@@ -1493,12 +1507,13 @@ void JandyAqualink::observe_frame(const jandy::Frame &f) {
                    ? 1
                    : 0;
       }
-      bool spa_ch, blow_ch, pump_ch, clean_ch, aux6_ch = false;
+      bool spa_ch, blow_ch, pump_ch, clean_ch, boost_ch, aux6_ch = false;
       portENTER_CRITICAL(&mux_);
       spa_ch = spa != cs_spa_;
       blow_ch = blow != cs_blower_;
       pump_ch = pump != cs_pump_;
       clean_ch = clean != cs_cleaner_;
+      boost_ch = boost != cs_booster_;
       if (aux6 >= 0) {
         aux6_ch = aux6 != cs_aux6_;
         cs_aux6_ = aux6;
@@ -1507,11 +1522,13 @@ void JandyAqualink::observe_frame(const jandy::Frame &f) {
       cs_blower_ = blow;
       cs_pump_ = pump;
       cs_cleaner_ = clean;
+      cs_booster_ = boost;
       portEXIT_CRITICAL(&mux_);
       if (spa_ch) ESP_LOGW(TAG, "STATUS CHANGE: spa_mode -> %d", spa);
       if (blow_ch) ESP_LOGW(TAG, "STATUS CHANGE: air_blower -> %d", blow);
       if (pump_ch) ESP_LOGW(TAG, "STATUS CHANGE: filter_pump -> %d", pump);
       if (clean_ch) ESP_LOGW(TAG, "STATUS CHANGE: cleaner -> %d", clean);
+      if (boost_ch) ESP_LOGW(TAG, "STATUS CHANGE: booster_pump -> %d", boost);
       if (aux6_ch) ESP_LOGW(TAG, "STATUS CHANGE: aux6 (acid) -> %d", aux6);
     }
   }
@@ -1661,13 +1678,14 @@ void JandyAqualink::loop() {
   }
 
   {
-    int8_t spa_s, blow_s, pump_s, clean_s, aux6_s;
+    int8_t spa_s, blow_s, pump_s, clean_s, boost_s, aux6_s;
     uint32_t ph_ms;
     portENTER_CRITICAL(&mux_);
     spa_s = cs_spa_;
     blow_s = cs_blower_;
     pump_s = cs_pump_;
     clean_s = cs_cleaner_;
+    boost_s = cs_booster_;
     aux6_s = cs_aux6_;
     ph_ms = last_ph_ms_;
     portEXIT_CRITICAL(&mux_);
@@ -1686,6 +1704,10 @@ void JandyAqualink::loop() {
     if (cleaner_bs_ && clean_s >= 0 && clean_s != pub_cs_cleaner_) {
       cleaner_bs_->publish_state(clean_s != 0);
       pub_cs_cleaner_ = clean_s;
+    }
+    if (booster_pump_bs_ && boost_s >= 0 && boost_s != pub_cs_booster_) {
+      booster_pump_bs_->publish_state(boost_s != 0);
+      pub_cs_booster_ = boost_s;
     }
     if (acid_dosing_bs_ && aux6_s >= 0 && aux6_s != pub_cs_aux6_) {
       acid_dosing_bs_->publish_state(aux6_s != 0);

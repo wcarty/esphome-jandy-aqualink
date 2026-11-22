@@ -36,6 +36,7 @@ CONF_SPA_MODE = "spa_mode"
 CONF_AIR_BLOWER = "air_blower"
 CONF_FILTER_PUMP_STATE = "filter_pump_state"
 CONF_CLEANER_STATE = "cleaner_state"
+CONF_BOOSTER_PUMP_STATE = "booster_pump_state"
 CONF_POOL_HEAT_ENABLED = "pool_heat_enabled"
 CONF_SPA_HEAT_ENABLED = "spa_heat_enabled"
 CONF_AUX6_STATUS_BYTE = "aux6_status_byte"
@@ -143,6 +144,10 @@ CONFIG_SCHEMA = cv.Schema(
             device_class="running",
             icon="mdi:robot-vacuum",
         ),
+        cv.Optional(CONF_BOOSTER_PUMP_STATE): binary_sensor.binary_sensor_schema(
+            device_class="running",
+            icon="mdi:pump",
+        ),
         cv.Optional(CONF_POOL_HEAT_ENABLED): binary_sensor.binary_sensor_schema(
             icon="mdi:radiator",
         ),
@@ -232,6 +237,9 @@ async def to_code(config):
     if CONF_CLEANER_STATE in config:
         b = await binary_sensor.new_binary_sensor(config[CONF_CLEANER_STATE])
         cg.add(var.set_cleaner_bs(b))
+    if CONF_BOOSTER_PUMP_STATE in config:
+        b = await binary_sensor.new_binary_sensor(config[CONF_BOOSTER_PUMP_STATE])
+        cg.add(var.set_booster_pump_bs(b))
     if CONF_POOL_HEAT_ENABLED in config:
         b = await binary_sensor.new_binary_sensor(config[CONF_POOL_HEAT_ENABLED])
         cg.add(var.set_pool_heat_bs(b))

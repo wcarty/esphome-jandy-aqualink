@@ -71,6 +71,7 @@ KeypadStatus decode_keypad_status(const Frame &f) {
   s.cleaner = status_bit(f, 1, 0);
   s.spa_mode = status_bit(f, 1, 2);
   s.filter_pump = status_bit(f, 1, 4);
+  s.booster_pump = status_bit(f, 2, 0);
   return s;
 }
 
