@@ -68,10 +68,11 @@ KeypadStatus decode_keypad_status(const Frame &f) {
   if (f.cmd() != CMD_STATUS) return s;
   s.valid = true;
   s.air_blower = status_bit(f, 1, 6);
-  s.cleaner = status_bit(f, 1, 0);
+  s.cleaner = false;
   s.spa_mode = status_bit(f, 1, 2);
   s.filter_pump = status_bit(f, 1, 4);
   s.booster_pump = status_bit(f, 2, 0);
+  s.pool_light = status_bit(f, 1, 0);
   return s;
 }
 

@@ -674,6 +674,11 @@ void JandyAqualink::set_booster_pump(bool on) {
 }
 
 void JandyAqualink::set_pool_light(bool on) {
+  int8_t cur;
+  portENTER_CRITICAL(&mux_);
+  cur = home_pool_light_;
+  portEXIT_CRITICAL(&mux_);
+  if (cur >= 0 && (cur != 0) == on) return;
   arm_aux_key_(jandy::KEY_AUX1, on ? "AUX1_LIGHT_ON" : "AUX1_LIGHT_OFF");
 }
 
@@ -1508,7 +1513,7 @@ void JandyAqualink::observe_frame(const jandy::Frame &f) {
     jandy::KeypadStatus ks = jandy::decode_keypad_status(f);
     if (ks.valid) {
       int8_t spa = ks.spa_mode, blow = ks.air_blower, pump = ks.filter_pump, clean = ks.cleaner,
-             boost = ks.booster_pump;
+             boost = ks.booster_pump, light = ks.pool_light;
       int8_t aux6 = -1;
       if (aux6_status_byte_ >= 0) {
         aux6 = (f.data_len() > static_cast<size_t>(aux6_status_byte_) &&
@@ -1516,13 +1521,14 @@ void JandyAqualink::observe_frame(const jandy::Frame &f) {
                    ? 1
                    : 0;
       }
-      bool spa_ch, blow_ch, pump_ch, clean_ch, boost_ch, aux6_ch = false;
+      bool spa_ch, blow_ch, pump_ch, clean_ch, boost_ch, light_ch, aux6_ch = false;
       portENTER_CRITICAL(&mux_);
       spa_ch = spa != cs_spa_;
       blow_ch = blow != cs_blower_;
       pump_ch = pump != cs_pump_;
       clean_ch = clean != cs_cleaner_;
       boost_ch = boost != cs_booster_;
+      light_ch = light != home_pool_light_;
       if (aux6 >= 0) {
         aux6_ch = aux6 != cs_aux6_;
         cs_aux6_ = aux6;
@@ -1532,12 +1538,14 @@ void JandyAqualink::observe_frame(const jandy::Frame &f) {
       cs_pump_ = pump;
       cs_cleaner_ = clean;
       cs_booster_ = boost;
+      home_pool_light_ = light;
       portEXIT_CRITICAL(&mux_);
       if (spa_ch) ESP_LOGW(TAG, "STATUS CHANGE: spa_mode -> %d", spa);
       if (blow_ch) ESP_LOGW(TAG, "STATUS CHANGE: air_blower -> %d", blow);
       if (pump_ch) ESP_LOGW(TAG, "STATUS CHANGE: filter_pump -> %d", pump);
       if (clean_ch) ESP_LOGW(TAG, "STATUS CHANGE: cleaner -> %d", clean);
       if (boost_ch) ESP_LOGW(TAG, "STATUS CHANGE: booster_pump -> %d", boost);
+      if (light_ch) ESP_LOGW(TAG, "STATUS CHANGE: pool_light -> %d", light);
       if (aux6_ch) ESP_LOGW(TAG, "STATUS CHANGE: aux6 (acid) -> %d", aux6);
     }
   }
