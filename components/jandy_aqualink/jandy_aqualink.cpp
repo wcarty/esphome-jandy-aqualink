@@ -638,7 +638,16 @@ void JandyAqualink::set_cleaner(bool on) {
 }
 
 void JandyAqualink::set_air_blower(bool on) {
-  set_tracked_toggle_(on, cs_blower_, jandy::KEY_IAQ_AIR_BLOWER, "Air Blower");
+  int8_t cur;
+  portENTER_CRITICAL(&mux_);
+  cur = cs_blower_;
+  portEXIT_CRITICAL(&mux_);
+  if (cur < 0) {
+    ESP_LOGW(TAG, "Air Blower(%d) refused: state not yet known", on ? 1 : 0);
+    return;
+  }
+  if ((cur != 0) == on) return;
+  arm_aux_key_(jandy::KEY_AUX5, on ? "AUX5_BLOWER_ON" : "AUX5_BLOWER_OFF");
 }
 
 void JandyAqualink::set_pool_light(bool on) {
