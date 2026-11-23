@@ -734,11 +734,11 @@ void JandyAqualink::set_pump_rpm(uint16_t rpm) {
     ESP_LOGW(TAG, "set_pump_rpm REFUSED: interlock OFF and scheduler not armed (rpm=%u)", rpm);
     return;
   }
+  uint16_t clamped = jandy::rpm_check(rpm);
   if (!iaq_presence_) {
-    ESP_LOGW(TAG, "set_pump_rpm REFUSED: iAqualink presence is OFF (rpm=%u)", rpm);
+    start_allbutton_menu_(5, clamped);
     return;
   }
-  uint16_t clamped = jandy::rpm_check(rpm);
   portENTER_CRITICAL(&mux_);
   if (iaq_toggle_step_ != 0 || iaq_heater_step_ != 0 || iaq_settemp_step_ != 0 || iaq_swg_step_ != 0 || iaq_survey_key_ >= 0) {  // one write-sequence at a time
     portEXIT_CRITICAL(&mux_);
@@ -1035,6 +1035,13 @@ void JandyAqualink::on_allbutton_lcd_(const char *text) {
       } else {
         next_key = jandy::KEY_RIGHT;
       }
+    } else if (ab_mode_ == 5) {
+      if (icontains(text, "VSP") || icontains(text, "SPEED") || icontains(text, "PUMP")) {
+        next_key = jandy::KEY_ENTER;
+        next_stage = 2;
+      } else {
+        next_key = jandy::KEY_RIGHT;
+      }
     } else {
       bool want_temp = (ab_mode_ == 1 || ab_mode_ == 2);
       if (want_temp && icontains(text, "SET TEMP")) {
@@ -1094,7 +1101,8 @@ void JandyAqualink::on_allbutton_lcd_(const char *text) {
       next_key = jandy::KEY_ENTER;
     } else if (cur >= 0) {
       int tgt = static_cast<int>(ab_target_);
-      if (cur == tgt) {
+      int tol = (ab_mode_ == 5) ? 25 : 0;
+      if (cur >= tgt - tol && cur <= tgt + tol) {
         next_key = jandy::KEY_ENTER;
         next_stage = 3;
       } else if (cur < tgt) {
