@@ -1889,7 +1889,7 @@ void JandyAqualink::loop() {
     char status[16];
     const char *name = jandy::swg_status_name(static_cast<uint8_t>(swg_status));
     if (std::strcmp(name, "unknown") == 0)
-      snprintf(status, sizeof(status), "unknown_0x%02x", static_cast<unsigned>(swg_status));
+      snprintf(status, sizeof(status), "unknown_0x%02x", static_cast<unsigned>(swg_status) & 0xFFu);
     else
       snprintf(status, sizeof(status), "%s", name);
     salt_chlorinator_status_ts_->publish_state(status);
