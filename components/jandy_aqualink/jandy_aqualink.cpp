@@ -963,6 +963,31 @@ int parse_first_int(const char *s) {
 }
 }  // namespace
 
+void JandyAqualink::sync_time(uint16_t year, uint8_t month, uint8_t day, uint8_t hour24, uint8_t minute) {
+  if (!interlock_) {
+    ESP_LOGW(TAG, "sync_time REFUSED: safety interlock is OFF");
+    return;
+  }
+  uint32_t now = millis();
+  portENTER_CRITICAL(&mux_);
+  ab_time_year_ = year;
+  ab_time_month_ = month;
+  ab_time_day_ = day;
+  ab_time_hour_ = hour24 % 24;
+  ab_time_min_ = minute % 60;
+  ab_mode_ = 4;
+  ab_target_ = 0;
+  ab_stage_ = 1;
+  ab_steps_ = 0;
+  ab_deadline_ms_ = now + 60000;
+  ab_last_key_ms_ = now;
+  armed_key_ = jandy::KEY_MENU;
+  portEXIT_CRITICAL(&mux_);
+  ESP_LOGW(TAG, "AllButton sync_time start: %04u-%02u-%02u %02u:%02u (armed KEY_MENU)",
+           static_cast<unsigned>(year), static_cast<unsigned>(month), static_cast<unsigned>(day),
+           static_cast<unsigned>(hour24), static_cast<unsigned>(minute));
+}
+
 void JandyAqualink::start_allbutton_menu_(uint8_t mode, uint16_t target) {
   uint32_t now = millis();
   portENTER_CRITICAL(&mux_);
@@ -981,7 +1006,8 @@ void JandyAqualink::start_allbutton_menu_(uint8_t mode, uint16_t target) {
 void JandyAqualink::on_allbutton_lcd_(const char *text) {
   uint32_t now = millis();
   if (ab_mode_ == 0) return;
-  if (now > ab_deadline_ms_ || ab_steps_ >= 60) {
+  uint8_t max_steps = (ab_mode_ == 4) ? 140 : 60;
+  if (now > ab_deadline_ms_ || ab_steps_ >= max_steps) {
     ESP_LOGW(TAG, "AllButton menu timeout/limit (stage=%u steps=%u lcd='%s') -> CANCEL",
              static_cast<unsigned>(ab_stage_), static_cast<unsigned>(ab_steps_), text);
     portENTER_CRITICAL(&mux_);
@@ -1002,15 +1028,61 @@ void JandyAqualink::on_allbutton_lcd_(const char *text) {
   bool done = false;
 
   if (ab_stage_ == 1) {
-    bool want_temp = (ab_mode_ == 1 || ab_mode_ == 2);
-    if (want_temp && icontains(text, "SET TEMP")) {
-      next_key = jandy::KEY_ENTER;
-      next_stage = 2;
-    } else if (!want_temp && (icontains(text, "AQUAPURE") || icontains(text, "PURELINK") || icontains(text, "SALT"))) {
-      next_key = jandy::KEY_ENTER;
-      next_stage = 2;
+    if (ab_mode_ == 4) {
+      if (icontains(text, "SET TIME")) {
+        next_key = jandy::KEY_ENTER;
+        next_stage = 2;
+      } else {
+        next_key = jandy::KEY_RIGHT;
+      }
     } else {
-      next_key = jandy::KEY_RIGHT;
+      bool want_temp = (ab_mode_ == 1 || ab_mode_ == 2);
+      if (want_temp && icontains(text, "SET TEMP")) {
+        next_key = jandy::KEY_ENTER;
+        next_stage = 2;
+      } else if (!want_temp && (icontains(text, "AQUAPURE") || icontains(text, "PURELINK") || icontains(text, "SALT"))) {
+        next_key = jandy::KEY_ENTER;
+        next_stage = 2;
+      } else {
+        next_key = jandy::KEY_RIGHT;
+      }
+    }
+  } else if (ab_stage_ == 2 && ab_mode_ == 4) {
+    static const char *const MONTHS[12] = {
+        "JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC"};
+    int cur = parse_first_int(text);
+    if (icontains(text, "YEAR") && cur >= 0) {
+      int tgt = (cur < 100) ? (ab_time_year_ % 100) : static_cast<int>(ab_time_year_);
+      next_key = (cur == tgt) ? jandy::KEY_ENTER : (cur < tgt ? jandy::KEY_RIGHT : jandy::KEY_LEFT);
+    } else if (icontains(text, "MONTH")) {
+      int cur_m = -1;
+      for (int i = 0; i < 12; ++i) {
+        if (icontains(text, MONTHS[i])) { cur_m = i + 1; break; }
+      }
+      if (cur_m < 0 && cur >= 1 && cur <= 12) cur_m = cur;
+      int tgt = static_cast<int>(ab_time_month_);
+      next_key = (cur_m < 0 || cur_m == tgt) ? jandy::KEY_ENTER : (cur_m < tgt ? jandy::KEY_RIGHT : jandy::KEY_LEFT);
+    } else if (icontains(text, "DAY") && cur >= 1 && cur <= 31) {
+      int tgt = static_cast<int>(ab_time_day_);
+      next_key = (cur == tgt) ? jandy::KEY_ENTER : (cur < tgt ? jandy::KEY_RIGHT : jandy::KEY_LEFT);
+    } else if (icontains(text, "HOUR") || ((icontains(text, "AM") || icontains(text, "PM")) && !icontains(text, "MIN"))) {
+      int h = cur;
+      if (h >= 1 && h <= 12) {
+        if (icontains(text, "PM") && h != 12) h += 12;
+        else if (icontains(text, "AM") && h == 12) h = 0;
+      }
+      int tgt = static_cast<int>(ab_time_hour_);
+      next_key = (h < 0 || h == tgt) ? jandy::KEY_ENTER : (h < tgt ? jandy::KEY_RIGHT : jandy::KEY_LEFT);
+    } else if (icontains(text, "MIN") && cur >= 0 && cur <= 59) {
+      int tgt = static_cast<int>(ab_time_min_);
+      if (cur == tgt) {
+        next_key = jandy::KEY_ENTER;
+        next_stage = 3;
+      } else {
+        next_key = (cur < tgt) ? jandy::KEY_RIGHT : jandy::KEY_LEFT;
+      }
+    } else {
+      next_key = jandy::KEY_ENTER;
     }
   } else if (ab_stage_ == 2) {
     int cur = parse_first_int(text);

@@ -173,6 +173,9 @@ class JandyAqualink : public Component {
   // Set AquaPure's pool output from 0 to 100 percent. The page-confirmed
   // sequence follows AquaLinkD's MENU -> SET_SWG -> Pool -> value handshake.
   void set_swg_percent(uint16_t percent);
+  // Sync Home Assistant / ESPHome clock to Jandy panel via AllButton (0x09)
+  // MENU -> SET TIME sequence. Gated by interlock_.
+  void sync_time(uint16_t year, uint8_t month, uint8_t day, uint8_t hour24, uint8_t minute);
 
  protected:
   static void task_trampoline(void *arg);
@@ -275,6 +278,8 @@ class JandyAqualink : public Component {
   volatile uint8_t ab_steps_{0};
   volatile uint32_t ab_deadline_ms_{0};
   volatile uint32_t ab_last_key_ms_{0};
+  volatile uint16_t ab_time_year_{2026};
+  volatile uint8_t ab_time_month_{1}, ab_time_day_{1}, ab_time_hour_{12}, ab_time_min_{0};
   void start_allbutton_menu_(uint8_t mode, uint16_t target);
   void on_allbutton_lcd_(const char *text);
 
