@@ -216,6 +216,43 @@
         </div>
       </div>
 
+      <div class="aq-trends-grid">
+        <div class="aq-card">
+          <div class="aq-section-title" style="margin-bottom:4px">
+            <span>24h Water Chemistry</span>
+            <span id="aq-tr-chem-meta" class="aq-kpi-meta" style="margin:0">0 pts</span>
+          </div>
+          <svg id="aq-chart-chem" class="aq-chart-svg" viewBox="0 0 320 110" preserveAspectRatio="none"></svg>
+          <div class="aq-legend">
+            <span><i class="aq-dot" style="background:#38d6e8"></i>pH (6.8–8.2)</span>
+            <span><i class="aq-dot" style="background:#f59e0b"></i>ORP (400–850 mV)</span>
+          </div>
+        </div>
+        <div class="aq-card">
+          <div class="aq-section-title" style="margin-bottom:4px">
+            <span>24h Temperatures</span>
+            <span id="aq-tr-temp-meta" class="aq-kpi-meta" style="margin:0">0 pts</span>
+          </div>
+          <svg id="aq-chart-temp" class="aq-chart-svg" viewBox="0 0 320 110" preserveAspectRatio="none"></svg>
+          <div class="aq-legend">
+            <span><i class="aq-dot" style="background:#0ea5e9"></i>Pool</span>
+            <span><i class="aq-dot" style="background:#f97316"></i>Spa</span>
+            <span><i class="aq-dot" style="background:#94a3b8"></i>Air</span>
+          </div>
+        </div>
+        <div class="aq-card">
+          <div class="aq-section-title" style="margin-bottom:4px">
+            <span>24h Pump Hydraulics</span>
+            <span id="aq-tr-pump-meta" class="aq-kpi-meta" style="margin:0">0 pts</span>
+          </div>
+          <svg id="aq-chart-pump" class="aq-chart-svg" viewBox="0 0 320 110" preserveAspectRatio="none"></svg>
+          <div class="aq-legend">
+            <span><i class="aq-dot" style="background:#22c55e"></i>Watts (0–2500 W)</span>
+            <span><i class="aq-dot" style="background:#a78bfa"></i>RPM (0–3450)</span>
+          </div>
+        </div>
+      </div>
+
       <div id="aq-logs-card" class="aq-card" style="display:none;margin-top:16px">
         <div class="aq-section-title">
           <span>Live RS485 / ESPHome Console</span>
@@ -391,8 +428,102 @@
     });
   }
 
+  const TREND_KEY = "aq_pro_trends_v1";
+  const DAY_MS = 24 * 3600 * 1000;
+  let trends = [];
+  let lastSampleMs = 0;
+
+  function loadTrends() {
+    try {
+      const raw = JSON.parse(localStorage.getItem(TREND_KEY) || "[]");
+      const cutoff = Date.now() - DAY_MS;
+      trends = Array.isArray(raw) ? raw.filter((p) => p && p.t >= cutoff) : [];
+    } catch (_) { trends = []; }
+  }
+
+  function saveTrends() {
+    try { localStorage.setItem(TREND_KEY, JSON.stringify(trends.slice(-1440))); } catch (_) {}
+  }
+
+  function drawSeries(svgId, seriesList, metaId) {
+    const svg = el(svgId);
+    if (!svg) return;
+    if (metaId && el(metaId)) el(metaId).textContent = `${trends.length} pts`;
+    const grid = `<line x1="0" y1="28" x2="320" y2="28" stroke="rgba(138,180,201,.10)" stroke-dasharray="3,3"/>` +
+                 `<line x1="0" y1="55" x2="320" y2="55" stroke="rgba(138,180,201,.10)" stroke-dasharray="3,3"/>` +
+                 `<line x1="0" y1="82" x2="320" y2="82" stroke="rgba(138,180,201,.10)" stroke-dasharray="3,3"/>`;
+    if (trends.length < 2) {
+      svg.innerHTML = grid + `<text x="160" y="60" text-anchor="middle" fill="#8ab4c9" font-size="11">Collecting 24h live samples…</text>`;
+      return;
+    }
+    const t0 = trends[0].t;
+    const span = Math.max(1, trends[trends.length - 1].t - t0);
+    let paths = "";
+    seriesList.forEach(({ key, min, max, color }) => {
+      const pts = [];
+      trends.forEach((p) => {
+        const v = p[key];
+        if (typeof v !== "number" || isNaN(v)) return;
+        const x = ((p.t - t0) / span) * 312 + 4;
+        const norm = Math.min(1, Math.max(0, (v - min) / (max - min)));
+        const y = 102 - norm * 92;
+        pts.push(`${x.toFixed(1)},${y.toFixed(1)}`);
+      });
+      if (pts.length >= 2) {
+        paths += `<polyline fill="none" stroke="${color}" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" points="${pts.join(" ")}"/>`;
+      }
+    });
+    svg.innerHTML = grid + paths;
+  }
+
+  function drawTrends() {
+    drawSeries("aq-chart-chem", [
+      { key: "ph", min: 6.8, max: 8.2, color: "#38d6e8" },
+      { key: "orp", min: 400, max: 850, color: "#f59e0b" },
+    ], "aq-tr-chem-meta");
+    drawSeries("aq-chart-temp", [
+      { key: "pool", min: 45, max: 110, color: "#0ea5e9" },
+      { key: "spa", min: 45, max: 110, color: "#f97316" },
+      { key: "air", min: 45, max: 110, color: "#94a3b8" },
+    ], "aq-tr-temp-meta");
+    drawSeries("aq-chart-pump", [
+      { key: "w", min: 0, max: 2500, color: "#22c55e" },
+      { key: "rpm", min: 0, max: 3450, color: "#a78bfa" },
+    ], "aq-tr-pump-meta");
+  }
+
+  function sampleTrends(force) {
+    const now = Date.now();
+    if (!force && now - lastSampleMs < 60000) return;
+    const n = (k) => {
+      if (!S[k]) return null;
+      const v = typeof S[k].value === "number" ? S[k].value : parseFloat(S[k].state);
+      return isNaN(v) ? null : v;
+    };
+    const pt = {
+      t: now,
+      ph: n("sensor-pool_ph"),
+      orp: n("sensor-pool_orp"),
+      pool: n("sensor-pool_water_temp"),
+      spa: n("sensor-spa_water_temp"),
+      air: n("sensor-pool_air_temp"),
+      w: n("sensor-pool_pump_watts"),
+      rpm: n("sensor-pool_pump_speed"),
+    };
+    if (pt.ph === null && pt.orp === null && pt.pool === null && pt.w === null && pt.rpm === null) return;
+    lastSampleMs = now;
+    const cutoff = now - DAY_MS;
+    trends = trends.filter((p) => p.t >= cutoff);
+    trends.push(pt);
+    saveTrends();
+    drawTrends();
+  }
+
   function start() {
     mount();
+    loadTrends();
+    drawTrends();
+    setInterval(() => sampleTrends(false), 60000);
     const es = new EventSource("/events");
     es.addEventListener("state", (e) => {
       try {
@@ -402,6 +533,7 @@
           S[k] = d;
           RAW_ID[k] = d.id;
           render();
+          if (lastSampleMs === 0) sampleTrends(true);
         }
       } catch (_) {}
     });

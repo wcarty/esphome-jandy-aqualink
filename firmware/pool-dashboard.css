@@ -394,3 +394,48 @@ body.aq-hide-native esp-app { display: none; }
   color: #fdba74;
   box-shadow: 0 0 12px rgba(249, 115, 22, 0.35);
 }
+
+
+/* 24-Hour Live Trend Charts */
+.aq-trends-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+  margin-top: 16px;
+}
+
+@media (max-width: 960px) {
+  .aq-trends-grid { grid-template-columns: 1fr; }
+}
+
+.aq-chart-svg {
+  width: 100%;
+  height: 110px;
+  display: block;
+  margin-top: 8px;
+  background: rgba(6, 19, 28, 0.55);
+  border-radius: 10px;
+  border: 1px solid rgba(138, 180, 201, 0.14);
+}
+
+.aq-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 8px;
+  font-size: 11px;
+  color: var(--muted);
+}
+
+.aq-legend span {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.aq-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  display: inline-block;
+}
