@@ -190,27 +190,56 @@ the bus. `0x08` is a good first choice.
 The richer display and control path uses the iAqualink Touch slot (`0x33`).
 It must also be unused by another live iAqualink controller.
 
-## 🧭 Dashboard
+## 🧭 Commercial SCADA Web Dashboard
 
-The local dashboard is organized into **Pool Overview**, **Water Chemistry**,
-**Equipment Status**, **Automation & Controls**, and **Diagnostics**. It is
-designed for a trusted local network only; ESPHome's web server is HTTP, not
-HTTPS.
+`firmware/pool-dashboard.css` and `firmware/pool-dashboard.js` provide a commercial-style
+SCADA web UI served directly by the ESP32 (`web_server: version: 3`), featuring:
 
-Add these secrets before compiling:
+- **Top Status Bar:** Live `POOL MODE` / `SPA MODE` badge, RS485 bus error count, master interlock status, and a built-in **Show Live Logs** console drawer.
+- **Interactive Arc Gauges:** Live Pool Heating (`45–90 °F`), Spa Heating (`80–104 °F`), and Salt Chlorinator (`0–100%`) gauges with `−`/`+`/slider controls.
+- **Water Chemistry & Local Acid Dosing:** Live pH, ORP, Salt ppm, SWG output/generating status, local ESP32 acid dosing controller state, **Auto Dosing** toggle, and **E-STOP**.
+- **Equipment Control Deck:** All 10 equipment & heater switches (including real hardware state feedback for Filter Pump, Spa Mode, Spa Booster, Air Blower, Pool Light, Spillover Waterfall, and Acid Dosing) plus one-tap **Spa Night** and **All Off** scenes.
+- **24-Hour Live Trends:** Inline SVG trend charts (pH & ORP, Pool/Spa/Air Temps, Pump Watts & RPM) persisted in browser `localStorage`.
+
+### Option A — 100% Offline (Recommended)
+Copy `firmware/pool-dashboard.css` and `firmware/pool-dashboard.js` into `/config/esphome/` and embed them directly in ESP32 flash so the dashboard works even during an internet outage:
 
 ```yaml
-pool_bridge_web_username: your_username
-pool_bridge_web_password: a_strong_password
+web_server:
+  port: 80
+  version: 3
+  css_url: ""
+  js_url: ""
+  css_include: pool-dashboard.css
+  js_include: pool-dashboard.js
 ```
+
+### Option B — CDN (Zero local files)
+```yaml
+web_server:
+  port: 80
+  version: 3
+  css_url: "https://cdn.jsdelivr.net/gh/wcarty/esphome-jandy-aqualink@master/firmware/pool-dashboard.css"
+  js_url: "https://cdn.jsdelivr.net/gh/wcarty/esphome-jandy-aqualink@master/firmware/pool-dashboard.js"
+```
+
+## ⏱️ AllButton (`0x09`) Menu Automation & Clock Sync
+
+When a physical iAqualink is already present on `0x33` (so `Pool iAqualink Presence` is OFF),
+this component automatically falls back to an LCD-driven AllButton (`0x09`) menu state machine
+for:
+- **Pool & Spa Heater Setpoints** (`set_heater_setpoint`)
+- **AquaPure / Salt Chlorinator Output %** (`set_swg_percent`)
+- **Variable-Speed Pump RPM** (`set_pump_rpm`)
+- **Jandy Clock Sync** (`sync_time(year, month, day, hour, minute)` — pairs with ESPHome's `time: platform: homeassistant` for automatic daily DST/drift sync and one-click manual sync)
 
 ## ⚠️ Limits to know
 
 - Heater and AquaPure setpoint writes are protocol-confirmed, but the panel
   does not echo the chosen numeric target back to this controller.
-- AquaPure output requires both **iAqualink Presence** and the master interlock.
 - Boost and other AquaPure settings are intentionally not changed.
 - Trust the panel's physical heat indicator over any unexpected heater state.
+- On RS-8 Combo panels, the Filter Pump is interlocked ON by the panel while Spillover (AUX 3) is active.
 
 ## 📚 Documentation
 
