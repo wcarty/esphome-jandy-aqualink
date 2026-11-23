@@ -879,11 +879,11 @@ void JandyAqualink::set_heater_setpoint(bool is_spa, uint16_t temp) {
     ESP_LOGW(TAG, "setpoint REFUSED: safety interlock is OFF (%s %u)", is_spa ? "spa" : "pool", temp);
     return;
   }
+  int clamped = is_spa ? jandy::spa_setpoint_check(temp) : jandy::pool_setpoint_check(temp);
   if (!iaq_presence_) {
-    ESP_LOGW(TAG, "setpoint REFUSED: iAqualink presence is OFF (%s %u)", is_spa ? "spa" : "pool", temp);
+    start_allbutton_menu_(is_spa ? 2 : 1, static_cast<uint16_t>(clamped));
     return;
   }
-  int clamped = is_spa ? jandy::spa_setpoint_check(temp) : jandy::pool_setpoint_check(temp);
   uint8_t key = is_spa ? jandy::KEY_IAQ_DEVICES_SPA_HEAT : jandy::KEY_IAQ_DEVICES_POOL_HEAT;
   portENTER_CRITICAL(&mux_);
   if (iaq_set_step_ != 0 || iaq_toggle_step_ != 0 || iaq_heater_step_ != 0 || iaq_settemp_step_ != 0 || iaq_swg_step_ != 0 || iaq_survey_key_ >= 0) {
@@ -910,11 +910,15 @@ void JandyAqualink::send_settemp_set_(uint16_t temp) {
 }
 
 void JandyAqualink::set_swg_percent(uint16_t percent) {
-  if (!interlock_ || !iaq_presence_) {
-    ESP_LOGW(TAG, "AquaPure output REFUSED: interlock and iAqualink presence must both be ON");
+  if (!interlock_) {
+    ESP_LOGW(TAG, "AquaPure output REFUSED: safety interlock is OFF");
     return;
   }
   uint8_t target = jandy::swg_percent_check(percent);
+  if (!iaq_presence_) {
+    start_allbutton_menu_(3, target);
+    return;
+  }
   portENTER_CRITICAL(&mux_);
   if (iaq_set_step_ != 0 || iaq_toggle_step_ != 0 || iaq_heater_step_ != 0 ||
       iaq_settemp_step_ != 0 || iaq_swg_step_ != 0 || iaq_survey_key_ >= 0) {
@@ -927,6 +931,124 @@ void JandyAqualink::set_swg_percent(uint16_t percent) {
   iaq_swg_step_ = 1;
   portEXIT_CRITICAL(&mux_);
   ESP_LOGW(TAG, "AquaPure output: start pool sequence -> %u%%", static_cast<unsigned>(target));
+}
+
+namespace {
+bool icontains(const char *haystack, const char *needle) {
+  if (!haystack || !needle || !*needle) return false;
+  for (const char *h = haystack; *h; ++h) {
+    const char *p = h, *q = needle;
+    while (*p && *q) {
+      char a = (*p >= 'a' && *p <= 'z') ? (*p - 32) : *p;
+      char b = (*q >= 'a' && *q <= 'z') ? (*q - 32) : *q;
+      if (a != b) break;
+      ++p;
+      ++q;
+    }
+    if (!*q) return true;
+  }
+  return false;
+}
+
+int parse_first_int(const char *s) {
+  if (!s) return -1;
+  while (*s && (*s < '0' || *s > '9')) ++s;
+  if (!*s) return -1;
+  int v = 0;
+  while (*s >= '0' && *s <= '9') {
+    v = v * 10 + (*s - '0');
+    ++s;
+  }
+  return v;
+}
+}  // namespace
+
+void JandyAqualink::start_allbutton_menu_(uint8_t mode, uint16_t target) {
+  uint32_t now = millis();
+  portENTER_CRITICAL(&mux_);
+  ab_mode_ = mode;
+  ab_target_ = target;
+  ab_stage_ = 1;
+  ab_steps_ = 0;
+  ab_deadline_ms_ = now + 25000;
+  ab_last_key_ms_ = now;
+  armed_key_ = jandy::KEY_MENU;
+  portEXIT_CRITICAL(&mux_);
+  ESP_LOGW(TAG, "AllButton menu start: mode=%u target=%u (armed KEY_MENU)",
+           static_cast<unsigned>(mode), static_cast<unsigned>(target));
+}
+
+void JandyAqualink::on_allbutton_lcd_(const char *text) {
+  uint32_t now = millis();
+  if (ab_mode_ == 0) return;
+  if (now > ab_deadline_ms_ || ab_steps_ >= 60) {
+    ESP_LOGW(TAG, "AllButton menu timeout/limit (stage=%u steps=%u lcd='%s') -> CANCEL",
+             static_cast<unsigned>(ab_stage_), static_cast<unsigned>(ab_steps_), text);
+    portENTER_CRITICAL(&mux_);
+    ab_mode_ = 0;
+    ab_stage_ = 0;
+    armed_key_ = jandy::KEY_CANCEL;
+    portEXIT_CRITICAL(&mux_);
+    return;
+  }
+  if (now - ab_last_key_ms_ < 350) return;
+  if (armed_key_ >= 0) return;  // wait for previous key to transmit
+
+  ESP_LOGW(TAG, "AllButton menu LCD [m=%u s=%u]: '%s'",
+           static_cast<unsigned>(ab_mode_), static_cast<unsigned>(ab_stage_), text);
+
+  uint8_t next_key = 0;
+  uint8_t next_stage = ab_stage_;
+  bool done = false;
+
+  if (ab_stage_ == 1) {
+    bool want_temp = (ab_mode_ == 1 || ab_mode_ == 2);
+    if (want_temp && icontains(text, "SET TEMP")) {
+      next_key = jandy::KEY_ENTER;
+      next_stage = 2;
+    } else if (!want_temp && (icontains(text, "AQUAPURE") || icontains(text, "PURELINK") || icontains(text, "SALT"))) {
+      next_key = jandy::KEY_ENTER;
+      next_stage = 2;
+    } else {
+      next_key = jandy::KEY_RIGHT;
+    }
+  } else if (ab_stage_ == 2) {
+    int cur = parse_first_int(text);
+    bool is_pool_line = icontains(text, "POOL");
+    bool is_spa_line = icontains(text, "SPA");
+    if (ab_mode_ == 1 && is_spa_line && !is_pool_line) {
+      next_key = jandy::KEY_ENTER;
+    } else if (ab_mode_ == 2 && is_pool_line && !is_spa_line) {
+      next_key = jandy::KEY_ENTER;
+    } else if (cur >= 0) {
+      int tgt = static_cast<int>(ab_target_);
+      if (cur == tgt) {
+        next_key = jandy::KEY_ENTER;
+        next_stage = 3;
+      } else if (cur < tgt) {
+        next_key = jandy::KEY_RIGHT;
+      } else {
+        next_key = jandy::KEY_LEFT;
+      }
+    } else {
+      next_key = jandy::KEY_ENTER;
+    }
+  } else if (ab_stage_ == 3) {
+    next_key = jandy::KEY_CANCEL;
+    done = true;
+  }
+
+  portENTER_CRITICAL(&mux_);
+  ab_steps_++;
+  ab_last_key_ms_ = now;
+  if (done) {
+    ab_mode_ = 0;
+    ab_stage_ = 0;
+  } else {
+    ab_stage_ = next_stage;
+  }
+  if (next_key != 0) armed_key_ = next_key;
+  portEXIT_CRITICAL(&mux_);
 }
 
 void JandyAqualink::send_swg_set_(uint8_t percent) {
@@ -1492,6 +1614,18 @@ void JandyAqualink::observe_frame(const jandy::Frame &f) {
   }
 
   // Equipment LED bitmap to our keypad seat. Log the full frame when it changes
+  if (f.dest() == keypad_addr_ && f.cmd() == 0x03 && f.data_len() >= 2 && ab_mode_ != 0) {
+    char lcd[32];
+    size_t n = f.data_len() - 1;
+    if (n > sizeof(lcd) - 1) n = sizeof(lcd) - 1;
+    for (size_t i = 0; i < n; ++i) {
+      uint8_t c = f.data()[i + 1];
+      lcd[i] = (c >= 0x20 && c <= 0x7E) ? static_cast<char>(c) : ' ';
+    }
+    lcd[n] = '\0';
+    on_allbutton_lcd_(lcd);
+  }
+
   // (forensic record), and decode the tracked circuits into shared state for the
   // binary_sensors, logging each circuit transition. Read-only.
   if (f.dest() == keypad_addr_ && f.cmd() == jandy::CMD_STATUS) {

@@ -267,6 +267,17 @@ class JandyAqualink : public Component {
   volatile int16_t armed_key_{-1};
   volatile uint32_t keys_sent_{0};
 
+  // AllButton (0x09) LCD-driven menu automation for Pool/Spa Temp & SWG %
+  // when iAqualink presence (0x33) is OFF (e.g. physical iAqualink connected).
+  volatile uint8_t ab_mode_{0};       // 0=idle, 1=pool_temp, 2=spa_temp, 3=swg_pct
+  volatile uint16_t ab_target_{0};
+  volatile uint8_t ab_stage_{0};      // 1=find_menu, 2=adjust, 3=exit
+  volatile uint8_t ab_steps_{0};
+  volatile uint32_t ab_deadline_ms_{0};
+  volatile uint32_t ab_last_key_ms_{0};
+  void start_allbutton_menu_(uint8_t mode, uint16_t target);
+  void on_allbutton_lcd_(const char *text);
+
   // iAqualink read state. iaq_presence_ gates whether we answer 0x33 frames.
   uint8_t iaq_addr_{jandy::IAQ_DEV_ID};
   volatile bool iaq_presence_{false};
