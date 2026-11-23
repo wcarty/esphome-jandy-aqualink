@@ -1719,7 +1719,7 @@ void JandyAqualink::observe_frame(const jandy::Frame &f) {
     jandy::KeypadStatus ks = jandy::decode_keypad_status(f);
     if (ks.valid) {
       int8_t spa = ks.spa_mode, blow = ks.air_blower, pump = ks.filter_pump, clean = ks.cleaner,
-             boost = ks.booster_pump, light = ks.pool_light;
+             boost = ks.booster_pump, light = ks.pool_light, spill = ks.spillover;
       int8_t aux6 = -1;
       if (aux6_status_byte_ >= 0) {
         aux6 = (f.data_len() > static_cast<size_t>(aux6_status_byte_) &&
@@ -1727,7 +1727,7 @@ void JandyAqualink::observe_frame(const jandy::Frame &f) {
                    ? 1
                    : 0;
       }
-      bool spa_ch, blow_ch, pump_ch, clean_ch, boost_ch, light_ch, aux6_ch = false;
+      bool spa_ch, blow_ch, pump_ch, clean_ch, boost_ch, light_ch, spill_ch, aux6_ch = false;
       portENTER_CRITICAL(&mux_);
       spa_ch = spa != cs_spa_;
       blow_ch = blow != cs_blower_;
@@ -1735,6 +1735,7 @@ void JandyAqualink::observe_frame(const jandy::Frame &f) {
       clean_ch = clean != cs_cleaner_;
       boost_ch = boost != cs_booster_;
       light_ch = light != home_pool_light_;
+      spill_ch = spill != cs_spillover_;
       if (aux6 >= 0) {
         aux6_ch = aux6 != cs_aux6_;
         cs_aux6_ = aux6;
@@ -1744,6 +1745,7 @@ void JandyAqualink::observe_frame(const jandy::Frame &f) {
       cs_pump_ = pump;
       cs_cleaner_ = clean;
       cs_booster_ = boost;
+      cs_spillover_ = spill;
       home_pool_light_ = light;
       portEXIT_CRITICAL(&mux_);
       if (spa_ch) ESP_LOGW(TAG, "STATUS CHANGE: spa_mode -> %d", spa);
@@ -1751,6 +1753,7 @@ void JandyAqualink::observe_frame(const jandy::Frame &f) {
       if (pump_ch) ESP_LOGW(TAG, "STATUS CHANGE: filter_pump -> %d", pump);
       if (clean_ch) ESP_LOGW(TAG, "STATUS CHANGE: cleaner -> %d", clean);
       if (boost_ch) ESP_LOGW(TAG, "STATUS CHANGE: booster_pump -> %d", boost);
+      if (spill_ch) ESP_LOGW(TAG, "STATUS CHANGE: spillover -> %d", spill);
       if (light_ch) ESP_LOGW(TAG, "STATUS CHANGE: pool_light -> %d", light);
       if (aux6_ch) ESP_LOGW(TAG, "STATUS CHANGE: aux6 (acid) -> %d", aux6);
     }
@@ -1903,12 +1906,14 @@ void JandyAqualink::loop() {
   {
     int8_t spa_s, blow_s, pump_s, clean_s, boost_s, aux6_s;
     uint32_t ph_ms;
+    int8_t spill_s;
     portENTER_CRITICAL(&mux_);
     spa_s = cs_spa_;
     blow_s = cs_blower_;
     pump_s = cs_pump_;
     clean_s = cs_cleaner_;
     boost_s = cs_booster_;
+    spill_s = cs_spillover_;
     aux6_s = cs_aux6_;
     ph_ms = last_ph_ms_;
     portEXIT_CRITICAL(&mux_);
@@ -1931,6 +1936,10 @@ void JandyAqualink::loop() {
     if (booster_pump_bs_ && boost_s >= 0 && boost_s != pub_cs_booster_) {
       booster_pump_bs_->publish_state(boost_s != 0);
       pub_cs_booster_ = boost_s;
+    }
+    if (spillover_bs_ && spill_s >= 0 && spill_s != pub_cs_spillover_) {
+      spillover_bs_->publish_state(spill_s != 0);
+      pub_cs_spillover_ = spill_s;
     }
     if (acid_dosing_bs_ && aux6_s >= 0 && aux6_s != pub_cs_aux6_) {
       acid_dosing_bs_->publish_state(aux6_s != 0);

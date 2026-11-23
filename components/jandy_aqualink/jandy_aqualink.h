@@ -49,6 +49,7 @@ class JandyAqualink : public Component {
   void set_filter_pump_bs(binary_sensor::BinarySensor *b) { filter_pump_bs_ = b; }
   void set_cleaner_bs(binary_sensor::BinarySensor *b) { cleaner_bs_ = b; }
   void set_booster_pump_bs(binary_sensor::BinarySensor *b) { booster_pump_bs_ = b; }
+  void set_spillover_bs(binary_sensor::BinarySensor *b) { spillover_bs_ = b; }
   void set_pool_heat_bs(binary_sensor::BinarySensor *b) { pool_heat_bs_ = b; }
   void set_spa_heat_bs(binary_sensor::BinarySensor *b) { spa_heat_bs_ = b; }
   void set_aux6_status_pos(int byte_i, int bit_i) {
@@ -117,6 +118,7 @@ class JandyAqualink : public Component {
   bool cleaner_on() const { return cs_cleaner_ == 1; }
   bool air_blower_on() const { return cs_blower_ == 1; }
   bool booster_pump_on() const { return cs_booster_ == 1; }
+  bool spillover_on() const { return cs_spillover_ == 1; }
   bool pool_light_on() const { return home_pool_light_ == 1; }
   void set_filter_pump(bool on);
   void set_cleaner(bool on);
@@ -224,6 +226,7 @@ class JandyAqualink : public Component {
   binary_sensor::BinarySensor *filter_pump_bs_{nullptr};
   binary_sensor::BinarySensor *cleaner_bs_{nullptr};
   binary_sensor::BinarySensor *booster_pump_bs_{nullptr};
+  binary_sensor::BinarySensor *spillover_bs_{nullptr};
   binary_sensor::BinarySensor *pool_heat_bs_{nullptr};
   binary_sensor::BinarySensor *spa_heat_bs_{nullptr};
   binary_sensor::BinarySensor *acid_dosing_bs_{nullptr};
@@ -232,8 +235,8 @@ class JandyAqualink : public Component {
   int aux6_status_bit_{0};
   // Decoded keypad-status circuit states, written by core 1 under mux_, published
   // by core 0. -1 = not yet known, 0 = off, 1 = on.
-  volatile int8_t cs_spa_{-1}, cs_blower_{-1}, cs_pump_{-1}, cs_cleaner_{-1}, cs_booster_{-1}, cs_aux6_{-1};
-  int8_t pub_cs_spa_{-2}, pub_cs_blower_{-2}, pub_cs_pump_{-2}, pub_cs_cleaner_{-2}, pub_cs_booster_{-2},
+  volatile int8_t cs_spa_{-1}, cs_blower_{-1}, cs_pump_{-1}, cs_cleaner_{-1}, cs_booster_{-1}, cs_spillover_{-1}, cs_aux6_{-1};
+  int8_t pub_cs_spa_{-2}, pub_cs_blower_{-2}, pub_cs_pump_{-2}, pub_cs_cleaner_{-2}, pub_cs_booster_{-2}, pub_cs_spillover_{-2},
       pub_cs_aux6_{-2};
   volatile uint32_t last_ph_ms_{0};
   // Local ESP32 acid dosing controller state (core 0 only).

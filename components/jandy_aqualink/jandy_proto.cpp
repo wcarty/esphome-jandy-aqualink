@@ -72,6 +72,7 @@ KeypadStatus decode_keypad_status(const Frame &f) {
   s.spa_mode = status_bit(f, 1, 2);
   s.filter_pump = status_bit(f, 1, 4);
   s.booster_pump = status_bit(f, 2, 0);
+  s.spillover = status_bit(f, 0, 4);
   s.pool_light = status_bit(f, 1, 0);
   return s;
 }

@@ -199,7 +199,11 @@
         <div class="aq-card">
           <div class="aq-section-title">
             <span>Equipment Control Deck</span>
-            <span id="aq-polls" class="aq-kpi-meta" style="margin:0">Polls: 0</span>
+            <div style="display:flex;gap:8px;align-items:center">
+              <button id="aq-scene-spa-night" class="aq-btn-ghost" style="border-color:rgba(249,115,22,.6);color:#fdba74">Spa Night</button>
+              <button id="aq-scene-all-off" class="aq-btn-ghost">All Off</button>
+              <span id="aq-polls" class="aq-kpi-meta" style="margin:0">Polls: 0</span>
+            </div>
           </div>
           <div id="aq-equip-grid" class="aq-equip-grid">
             ${SWITCHES.map(
@@ -234,6 +238,16 @@
     el("aq-acid-estop").onclick = () => postAction("button", "Pool Acid Emergency Stop", "press");
     el("aq-g-pool-heat").onclick = () => postAction("switch", "Pool Heater", "toggle");
     el("aq-g-spa-heat").onclick = () => postAction("switch", "Spa Heater", "toggle");
+
+    const runSeq = (items, action) => {
+      items.forEach((name, idx) => {
+        setTimeout(() => postAction("switch", name, action), idx * 750);
+      });
+    };
+    el("aq-scene-spa-night").onclick = () =>
+      runSeq(["Pool Spa Mode", "Spa Heater", "Spa Booster Pump", "Pool Air Blower", "Pool Light"], "turn_on");
+    el("aq-scene-all-off").onclick = () =>
+      runSeq(["Pool Spillover Waterfall", "Spa Heater", "Pool Heater", "Spa Booster Pump", "Pool Air Blower", "Pool Light", "Pool Spa Mode", "Pool Filter Pump"], "turn_off");
 
     const bindSlider = (slId, lblId, prefix, suffix, numName) => {
       const sl = el(slId);
