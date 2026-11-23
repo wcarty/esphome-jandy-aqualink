@@ -49,21 +49,18 @@ the other.
 
 | Hardware | Tested model | Role |
 | --- | --- | --- |
-| 🧠 ESP32 controller | [**M5Stack Atom Lite**](https://docs.m5stack.com/en/core/ATOM%20Lite) | Runs ESPHome and the RS485 protocol task |
-| 🔌 RS485 interface | [**M5Stack ATOM RS485 Base**](https://docs.m5stack.com/en/base/atom_rs485) | Connects the Atom Lite to the AquaLink bus |
-| 🏊 Pool controller | Jandy AquaLink RS panel | Provides RS485 A, B, and ground terminals |
+| 🧠 **Primary ESP32-S3 + RS485** | [**Waveshare ESP32-S3-RS485-CAN**](https://www.waveshare.com/esp32-s3-rs485-can.htm) | All-in-one ESP32-S3 board with isolated RS485 transceiver (`tx_pin: 17`, `rx_pin: 18`, `flow_control_pin: 21`) |
+| 🔌 Alternative ESP32 + RS485 | [**M5Stack Atom Lite**](https://docs.m5stack.com/en/core/ATOM%20Lite) + [**ATOM RS485 Base**](https://docs.m5stack.com/en/base/atom_rs485) | Auto-direction RS485 alternative (`tx_pin: 19`, `rx_pin: 22`) |
+| 🏊 Pool controller | Jandy AquaLink RS panel | Provides RS485 A+ and B- terminals |
 
 ```text
-┌──────────────────────┐      ┌────────────────────────┐      ┌─────────────────────┐
-│  M5Stack Atom Lite   │──────│  M5Stack ATOM RS485     │──────│  Jandy AquaLink RS  │
-│  ESP32 + ESPHome     │      │  Base (SP3485)          │      │  RS485 A / B / GND  │
-└──────────────────────┘      └────────────────────────┘      └─────────────────────┘
-         GPIO19 TX                       RS485 bus
-         GPIO22 RX
+┌──────────────────────────────────┐      ┌─────────────────────┐
+│  Waveshare ESP32-S3-RS485-CAN    │──────│  Jandy AquaLink RS  │
+│  GPIO17 TX / GPIO18 RX / GPIO21  │      │  RS485 A+ / B-      │
+└──────────────────────────────────┘      └─────────────────────┘
 ```
 
-The tested ATOM RS485 base uses automatic direction control. Defaults are
-**GPIO19 TX**, **GPIO22 RX**, **9600 baud**, 8N1.
+The **Waveshare ESP32-S3-RS485-CAN** includes an onboard isolated RS485 transceiver (only **A+** and **B-** are required on the bus). Configure `tx_pin: 17`, `rx_pin: 18`, `flow_control_pin: 21`, `baud_rate: 9600`. (For the M5Stack ATOM RS485 Base, omit `flow_control_pin` and use `tx_pin: 19`, `rx_pin: 22`.)
 
 ### 1a. Wire the Jandy RS485 harness
 
