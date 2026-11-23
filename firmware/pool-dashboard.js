@@ -142,7 +142,10 @@
         <div class="aq-card aq-gauge-card">
           <div class="aq-gauge-head">
             <span class="aq-kpi-label" style="margin:0">Salt Chlorinator</span>
-            <span id="aq-g-swg-pill" class="aq-pill">SWG: --</span>
+            <div style="display:flex;gap:6px;align-items:center">
+              <button id="aq-g-swg-boost" class="aq-heat-btn">BOOST: OFF</button>
+              <span id="aq-g-swg-pill" class="aq-pill">SWG: --</span>
+            </div>
           </div>
           <svg class="aq-gauge-svg" viewBox="0 0 200 115">
             <path class="aq-gauge-track" d="M 20 100 A 80 80 0 0 1 180 100"/>
@@ -275,6 +278,7 @@
     el("aq-acid-estop").onclick = () => postAction("button", "Pool Acid Emergency Stop", "press");
     el("aq-g-pool-heat").onclick = () => postAction("switch", "Pool Heater", "toggle");
     el("aq-g-spa-heat").onclick = () => postAction("switch", "Spa Heater", "toggle");
+    el("aq-g-swg-boost").onclick = () => postAction("switch", "Pool Super Chlorinate", "toggle");
 
     const runSeq = (items, action) => {
       items.forEach((name, idx) => {
@@ -344,6 +348,12 @@
       const b = el("aq-g-spa-heat");
       b.textContent = `HEAT: ${shSw}`;
       b.classList.toggle("on", shSw === "ON");
+    }
+    const boostSw = val("switch-pool_super_chlorinate");
+    if (boostSw) {
+      const b = el("aq-g-swg-boost");
+      b.textContent = `BOOST: ${boostSw}`;
+      b.classList.toggle("on", boostSw === "ON");
     }
 
     const rpm = num("sensor-pool_pump_speed");

@@ -963,6 +963,14 @@ int parse_first_int(const char *s) {
 }
 }  // namespace
 
+void JandyAqualink::set_swg_boost(bool on) {
+  if (!interlock_) {
+    ESP_LOGW(TAG, "set_swg_boost REFUSED: safety interlock is OFF");
+    return;
+  }
+  start_allbutton_menu_(6, on ? 1 : 0);
+}
+
 void JandyAqualink::sync_time(uint16_t year, uint8_t month, uint8_t day, uint8_t hour24, uint8_t minute) {
   if (!interlock_) {
     ESP_LOGW(TAG, "sync_time REFUSED: safety interlock is OFF");
@@ -1042,6 +1050,13 @@ void JandyAqualink::on_allbutton_lcd_(const char *text) {
       } else {
         next_key = jandy::KEY_RIGHT;
       }
+    } else if (ab_mode_ == 6) {
+      if (icontains(text, "AQUAPURE") || icontains(text, "PURELINK") || icontains(text, "SALT")) {
+        next_key = jandy::KEY_ENTER;
+        next_stage = 2;
+      } else {
+        next_key = jandy::KEY_RIGHT;
+      }
     } else {
       bool want_temp = (ab_mode_ == 1 || ab_mode_ == 2);
       if (want_temp && icontains(text, "SET TEMP")) {
@@ -1090,6 +1105,20 @@ void JandyAqualink::on_allbutton_lcd_(const char *text) {
       }
     } else {
       next_key = jandy::KEY_ENTER;
+    }
+  } else if (ab_stage_ == 2 && ab_mode_ == 6) {
+    if (icontains(text, "BOOST") || icontains(text, "SUPER")) {
+      bool want_on = (ab_target_ != 0);
+      if ((want_on && icontains(text, "ON")) || (!want_on && icontains(text, "OFF"))) {
+        next_key = jandy::KEY_ENTER;
+        next_stage = 3;
+      } else if (icontains(text, "ON") || icontains(text, "OFF")) {
+        next_key = want_on ? jandy::KEY_RIGHT : jandy::KEY_LEFT;
+      } else {
+        next_key = jandy::KEY_ENTER;
+      }
+    } else {
+      next_key = jandy::KEY_RIGHT;
     }
   } else if (ab_stage_ == 2) {
     int cur = parse_first_int(text);

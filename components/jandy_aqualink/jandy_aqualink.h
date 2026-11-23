@@ -175,6 +175,8 @@ class JandyAqualink : public Component {
   // Set AquaPure's pool output from 0 to 100 percent. The page-confirmed
   // sequence follows AquaLinkD's MENU -> SET_SWG -> Pool -> value handshake.
   void set_swg_percent(uint16_t percent);
+  // Enable/disable AquaPure Super Chlorinate (Boost) via AllButton (0x09) menu.
+  void set_swg_boost(bool on);
   // Sync Home Assistant / ESPHome clock to Jandy panel via AllButton (0x09)
   // MENU -> SET TIME sequence. Gated by interlock_.
   void sync_time(uint16_t year, uint8_t month, uint8_t day, uint8_t hour24, uint8_t minute);
