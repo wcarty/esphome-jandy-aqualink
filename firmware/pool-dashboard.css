@@ -263,3 +263,134 @@ body.aq-hide-native esp-app { display: none; }
 @media (max-width: 520px) {
   .aq-chem-row, .aq-equip-grid { grid-template-columns: 1fr; }
 }
+
+
+/* Commercial Heating & Salt System Arc Gauges */
+.aq-gauge-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+  margin-bottom: 18px;
+}
+
+@media (max-width: 900px) {
+  .aq-gauge-grid { grid-template-columns: 1fr; }
+}
+
+.aq-gauge-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  position: relative;
+}
+
+.aq-gauge-head {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 6px;
+}
+
+.aq-gauge-svg {
+  width: 210px;
+  height: 122px;
+  overflow: visible;
+}
+
+.aq-gauge-track {
+  fill: none;
+  stroke: rgba(138, 180, 201, 0.16);
+  stroke-width: 14;
+  stroke-linecap: round;
+}
+
+.aq-gauge-fill {
+  fill: none;
+  stroke-width: 14;
+  stroke-linecap: round;
+  transition: stroke-dashoffset 0.35s ease;
+}
+
+.aq-gauge-fill.pool { stroke: url(#aq-grad-pool); }
+.aq-gauge-fill.spa { stroke: url(#aq-grad-spa); }
+.aq-gauge-fill.salt { stroke: url(#aq-grad-salt); }
+
+.aq-gauge-val {
+  font-size: 30px;
+  font-weight: 800;
+  fill: var(--text);
+}
+
+.aq-gauge-sub {
+  font-size: 11px;
+  font-weight: 600;
+  fill: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+}
+
+.aq-gauge-ctrl {
+  width: 100%;
+  margin-top: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.aq-slider-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.aq-step-btn {
+  width: 30px;
+  height: 30px;
+  border-radius: 8px;
+  border: 1px solid rgba(56, 214, 232, 0.35);
+  background: rgba(6, 19, 28, 0.7);
+  color: var(--text);
+  font-size: 16px;
+  font-weight: 700;
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+}
+.aq-step-btn:hover { background: rgba(56, 214, 232, 0.18); }
+
+.aq-range {
+  flex: 1;
+  accent-color: var(--accent);
+  cursor: pointer;
+}
+.aq-range.spa { accent-color: #f97316; }
+.aq-range.salt { accent-color: #22c55e; }
+
+.aq-gauge-foot {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.aq-heat-btn {
+  cursor: pointer;
+  padding: 5px 12px;
+  border-radius: 999px;
+  border: 1px solid rgba(138, 180, 201, 0.35);
+  background: rgba(6, 19, 28, 0.7);
+  color: var(--text);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.4px;
+}
+.aq-heat-btn.on {
+  border-color: rgba(249, 115, 22, 0.8);
+  background: rgba(249, 115, 22, 0.24);
+  color: #fdba74;
+  box-shadow: 0 0 12px rgba(249, 115, 22, 0.35);
+}

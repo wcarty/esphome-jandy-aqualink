@@ -21,11 +21,19 @@
     return raw.toLowerCase().replace("/", "-").replace(/[^a-z0-9-]+/g, "_").replace(/^_|_$/g, "");
   }
 
-  function postAction(domain, fallbackName, action) {
+  function postAction(domain, fallbackName, action, query) {
     const key = normId(`${domain}/${fallbackName}`);
     const raw = RAW_ID[key] || `${domain}/${fallbackName}`;
-    const path = "/" + raw.split("/").map(encodeURIComponent).join("/") + "/" + action;
+    const path = "/" + raw.split("/").map(encodeURIComponent).join("/") + "/" + action + (query ? `?${query}` : "");
     return fetch(path, { method: "POST" });
+  }
+
+  const ARC_LEN = 251.33; // semicircle r=80: pi * 80
+  function setArc(id, pct) {
+    const node = el(id);
+    if (!node) return;
+    const clamped = Math.min(1, Math.max(0, pct));
+    node.style.strokeDashoffset = (ARC_LEN * (1 - clamped)).toFixed(1);
   }
 
   function mount() {
@@ -71,6 +79,85 @@
           <div id="aq-rpm" class="aq-kpi-val">-- RPM</div>
           <div id="aq-watts" class="aq-kpi-meta">-- W</div>
           <div class="aq-bar"><span id="aq-rpm-bar" style="width:0%"></span></div>
+        </div>
+      </div>
+
+      <svg width="0" height="0" style="position:absolute">
+        <defs>
+          <linearGradient id="aq-grad-pool" x1="0%" y1="0%" x2="100%" y2="0%">
+            <stop offset="0%" stop-color="#0ea5e9"/><stop offset="100%" stop-color="#38d6e8"/>
+          </linearGradient>
+          <linearGradient id="aq-grad-spa" x1="0%" y1="0%" x2="100%" y2="0%">
+            <stop offset="0%" stop-color="#f59e0b"/><stop offset="100%" stop-color="#ef4444"/>
+          </linearGradient>
+          <linearGradient id="aq-grad-salt" x1="0%" y1="0%" x2="100%" y2="0%">
+            <stop offset="0%" stop-color="#06b6d4"/><stop offset="100%" stop-color="#22c55e"/>
+          </linearGradient>
+        </defs>
+      </svg>
+
+      <div class="aq-gauge-grid">
+        <div class="aq-card aq-gauge-card">
+          <div class="aq-gauge-head">
+            <span class="aq-kpi-label" style="margin:0">Pool Heating</span>
+            <button id="aq-g-pool-heat" class="aq-heat-btn">HEAT: OFF</button>
+          </div>
+          <svg class="aq-gauge-svg" viewBox="0 0 200 115">
+            <path class="aq-gauge-track" d="M 20 100 A 80 80 0 0 1 180 100"/>
+            <path id="aq-arc-pool" class="aq-gauge-fill pool" d="M 20 100 A 80 80 0 0 1 180 100" stroke-dasharray="251.33" stroke-dashoffset="251.33"/>
+            <text id="aq-g-pool-val" x="100" y="82" text-anchor="middle" class="aq-gauge-val">--°F</text>
+            <text id="aq-g-pool-set-lbl" x="100" y="102" text-anchor="middle" class="aq-gauge-sub">TARGET: 82°F</text>
+          </svg>
+          <div class="aq-gauge-ctrl">
+            <div class="aq-slider-row">
+              <button class="aq-step-btn" data-step="-1" data-target="aq-sl-pool">−</button>
+              <input id="aq-sl-pool" class="aq-range" type="range" min="45" max="90" step="1" value="82"/>
+              <button class="aq-step-btn" data-step="1" data-target="aq-sl-pool">+</button>
+            </div>
+            <div class="aq-gauge-foot"><span>45°F</span><span>Pool Setpoint</span><span>90°F</span></div>
+          </div>
+        </div>
+
+        <div class="aq-card aq-gauge-card">
+          <div class="aq-gauge-head">
+            <span class="aq-kpi-label" style="margin:0">Spa Heating</span>
+            <button id="aq-g-spa-heat" class="aq-heat-btn">HEAT: OFF</button>
+          </div>
+          <svg class="aq-gauge-svg" viewBox="0 0 200 115">
+            <path class="aq-gauge-track" d="M 20 100 A 80 80 0 0 1 180 100"/>
+            <path id="aq-arc-spa" class="aq-gauge-fill spa" d="M 20 100 A 80 80 0 0 1 180 100" stroke-dasharray="251.33" stroke-dashoffset="251.33"/>
+            <text id="aq-g-spa-val" x="100" y="82" text-anchor="middle" class="aq-gauge-val">--°F</text>
+            <text id="aq-g-spa-set-lbl" x="100" y="102" text-anchor="middle" class="aq-gauge-sub">TARGET: 102°F</text>
+          </svg>
+          <div class="aq-gauge-ctrl">
+            <div class="aq-slider-row">
+              <button class="aq-step-btn" data-step="-1" data-target="aq-sl-spa">−</button>
+              <input id="aq-sl-spa" class="aq-range spa" type="range" min="80" max="104" step="1" value="102"/>
+              <button class="aq-step-btn" data-step="1" data-target="aq-sl-spa">+</button>
+            </div>
+            <div class="aq-gauge-foot"><span>80°F</span><span>Spa Setpoint</span><span>104°F</span></div>
+          </div>
+        </div>
+
+        <div class="aq-card aq-gauge-card">
+          <div class="aq-gauge-head">
+            <span class="aq-kpi-label" style="margin:0">Salt Chlorinator</span>
+            <span id="aq-g-swg-pill" class="aq-pill">SWG: --</span>
+          </div>
+          <svg class="aq-gauge-svg" viewBox="0 0 200 115">
+            <path class="aq-gauge-track" d="M 20 100 A 80 80 0 0 1 180 100"/>
+            <path id="aq-arc-salt" class="aq-gauge-fill salt" d="M 20 100 A 80 80 0 0 1 180 100" stroke-dasharray="251.33" stroke-dashoffset="251.33"/>
+            <text id="aq-g-salt-val" x="100" y="82" text-anchor="middle" class="aq-gauge-val">--%</text>
+            <text id="aq-g-salt-ppm" x="100" y="102" text-anchor="middle" class="aq-gauge-sub">-- PPM</text>
+          </svg>
+          <div class="aq-gauge-ctrl">
+            <div class="aq-slider-row">
+              <button class="aq-step-btn" data-step="-5" data-target="aq-sl-salt">−</button>
+              <input id="aq-sl-salt" class="aq-range salt" type="range" min="0" max="100" step="5" value="35"/>
+              <button class="aq-step-btn" data-step="5" data-target="aq-sl-salt">+</button>
+            </div>
+            <div class="aq-gauge-foot"><span>0%</span><span id="aq-g-salt-set-lbl">Target: 35%</span><span>100%</span></div>
+          </div>
         </div>
       </div>
 
@@ -145,6 +232,30 @@
 
     el("aq-acid-auto-btn").onclick = () => postAction("switch", "Pool Acid Auto Dosing", "toggle");
     el("aq-acid-estop").onclick = () => postAction("button", "Pool Acid Emergency Stop", "press");
+    el("aq-g-pool-heat").onclick = () => postAction("switch", "Pool Heater", "toggle");
+    el("aq-g-spa-heat").onclick = () => postAction("switch", "Spa Heater", "toggle");
+
+    const bindSlider = (slId, lblId, prefix, suffix, numName) => {
+      const sl = el(slId);
+      const send = () => {
+        el(lblId).textContent = `${prefix}${sl.value}${suffix}`;
+        postAction("number", numName, "set", `value=${encodeURIComponent(sl.value)}`);
+      };
+      sl.oninput = () => { el(lblId).textContent = `${prefix}${sl.value}${suffix}`; };
+      sl.onchange = send;
+    };
+    bindSlider("aq-sl-pool", "aq-g-pool-set-lbl", "TARGET: ", "°F", "Pool Heat Setpoint");
+    bindSlider("aq-sl-spa", "aq-g-spa-set-lbl", "TARGET: ", "°F", "Spa Heat Setpoint");
+    bindSlider("aq-sl-salt", "aq-g-salt-set-lbl", "Target: ", "%", "Pool Salt Chlorinator Setpoint");
+
+    root.querySelectorAll(".aq-step-btn").forEach((btn) => {
+      btn.onclick = () => {
+        const sl = el(btn.dataset.target);
+        const next = Math.min(Number(sl.max), Math.max(Number(sl.min), Number(sl.value) + Number(btn.dataset.step)));
+        sl.value = String(next);
+        sl.dispatchEvent(new Event("change"));
+      };
+    });
 
     root.querySelectorAll(".aq-tile").forEach((btn) => {
       btn.onclick = () => postAction("switch", btn.dataset.name, "toggle");
@@ -155,9 +266,34 @@
     const val = (k) => (S[k] && S[k].state !== undefined ? S[k].state : null);
     const num = (k) => (S[k] && typeof S[k].value === "number" ? S[k].value : parseFloat(val(k)));
 
-    if (val("sensor-pool_water_temp")) el("aq-pool-temp").textContent = val("sensor-pool_water_temp");
-    if (val("sensor-spa_water_temp")) el("aq-spa-temp").textContent = val("sensor-spa_water_temp");
+    if (val("sensor-pool_water_temp")) {
+      el("aq-pool-temp").textContent = val("sensor-pool_water_temp");
+      el("aq-g-pool-val").textContent = val("sensor-pool_water_temp");
+    }
+    const pt = num("sensor-pool_water_temp");
+    if (!isNaN(pt)) setArc("aq-arc-pool", (pt - 45) / (90 - 45));
+
+    if (val("sensor-spa_water_temp")) {
+      el("aq-spa-temp").textContent = val("sensor-spa_water_temp");
+      el("aq-g-spa-val").textContent = val("sensor-spa_water_temp");
+    }
+    const stp = num("sensor-spa_water_temp");
+    if (!isNaN(stp)) setArc("aq-arc-spa", (stp - 80) / (104 - 80));
+
     if (val("sensor-pool_air_temp")) el("aq-air-temp").textContent = val("sensor-pool_air_temp");
+
+    const phSw = val("switch-pool_heater");
+    if (phSw) {
+      const b = el("aq-g-pool-heat");
+      b.textContent = `HEAT: ${phSw}`;
+      b.classList.toggle("on", phSw === "ON");
+    }
+    const shSw = val("switch-spa_heater");
+    if (shSw) {
+      const b = el("aq-g-spa-heat");
+      b.textContent = `HEAT: ${shSw}`;
+      b.classList.toggle("on", shSw === "ON");
+    }
 
     const rpm = num("sensor-pool_pump_speed");
     if (!isNaN(rpm)) {
@@ -176,9 +312,17 @@
       el("aq-orp").textContent = `${Math.round(orp)} mV`;
       el("aq-orp-bar").style.width = `${Math.min(100, Math.max(0, ((orp - 400) / 450) * 100))}%`;
     }
-    if (val("sensor-pool_salt_level")) el("aq-salt").textContent = val("sensor-pool_salt_level");
+    if (val("sensor-pool_salt_level")) {
+      el("aq-salt").textContent = val("sensor-pool_salt_level");
+      el("aq-g-salt-ppm").textContent = val("sensor-pool_salt_level").toUpperCase();
+    }
     if (val("sensor-pool_salt_chlorinator_output")) {
       el("aq-swg-pct").textContent = `Output: ${val("sensor-pool_salt_chlorinator_output")}`;
+      el("aq-g-salt-val").textContent = val("sensor-pool_salt_chlorinator_output");
+    }
+    const swgNum = num("sensor-pool_salt_chlorinator_output");
+    if (!isNaN(swgNum)) {
+      setArc("aq-arc-salt", swgNum / 100);
     }
 
     const gen = val("binary_sensor-pool_salt_chlorinator_generating");
@@ -186,6 +330,9 @@
       const p = el("aq-swg-gen");
       p.textContent = gen === "ON" ? "SWG: GENERATING" : "SWG: IDLE";
       p.className = `aq-pill ${gen === "ON" ? "ok" : ""}`;
+      const gp = el("aq-g-swg-pill");
+      gp.textContent = gen === "ON" ? "GENERATING" : "IDLE";
+      gp.className = `aq-pill ${gen === "ON" ? "ok" : ""}`;
     }
 
     if (val("text_sensor-pool_acid_controller_state")) {
