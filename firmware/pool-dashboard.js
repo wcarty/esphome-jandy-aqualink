@@ -481,6 +481,10 @@
       });
       if (pts.length >= 2) {
         paths += `<polyline fill="none" stroke="${color}" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" points="${pts.join(" ")}"/>`;
+      } else if (pts.length === 1) {
+        const [x, y] = pts[0].split(",");
+        paths += `<line x1="4" y1="${y}" x2="316" y2="${y}" stroke="${color}" stroke-width="1.5" stroke-dasharray="4,4" opacity="0.7"/>` +
+                 `<circle cx="${x}" cy="${y}" r="3.5" fill="${color}"/>`;
       }
     });
     svg.innerHTML = grid + paths;
@@ -504,7 +508,6 @@
 
   function sampleTrends(force) {
     const now = Date.now();
-    if (!force && now - lastSampleMs < 60000) return;
     const n = (k) => {
       if (!S[k]) return null;
       const v = typeof S[k].value === "number" ? S[k].value : parseFloat(S[k].state);
@@ -520,7 +523,18 @@
       w: n("sensor-pool_pump_watts"),
       rpm: n("sensor-pool_pump_speed"),
     };
-    if (pt.ph === null && pt.orp === null && pt.pool === null && pt.w === null && pt.rpm === null) return;
+    if (pt.ph === null && pt.orp === null && pt.pool === null && pt.air === null && pt.w === null && pt.rpm === null) return;
+    // Merge newly arriving sensors into the latest point if < 15s old
+    if (trends.length > 0 && now - trends[trends.length - 1].t < 15000) {
+      const last = trends[trends.length - 1];
+      let changed = false;
+      ["ph", "orp", "pool", "spa", "air", "w", "rpm"].forEach((k) => {
+        if (pt[k] !== null && last[k] !== pt[k]) { last[k] = pt[k]; changed = true; }
+      });
+      if (changed) { saveTrends(); drawTrends(); }
+      return;
+    }
+    if (!force && now - lastSampleMs < 30000) return;
     lastSampleMs = now;
     const cutoff = now - DAY_MS;
     trends = trends.filter((p) => p.t >= cutoff);
@@ -533,7 +547,7 @@
     mount();
     loadTrends();
     drawTrends();
-    setInterval(() => sampleTrends(false), 60000);
+    setInterval(() => sampleTrends(false), 30000);
     const es = new EventSource("/events");
     es.addEventListener("state", (e) => {
       try {
@@ -543,7 +557,7 @@
           S[k] = d;
           RAW_ID[k] = d.id;
           render();
-          if (lastSampleMs === 0) sampleTrends(true);
+          sampleTrends(lastSampleMs === 0);
         }
       } catch (_) {}
     });
