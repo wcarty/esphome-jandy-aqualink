@@ -509,10 +509,21 @@
       { key: "ph", min: 6.8, max: 8.2, color: "#38d6e8" },
       { key: "orp", min: 400, max: 850, color: "#f59e0b" },
     ], "aq-tr-chem-meta");
+    let tMin = 110, tMax = 45;
+    trends.forEach((p) => {
+      ["pool", "spa", "air"].forEach((k) => {
+        if (typeof p[k] === "number" && !isNaN(p[k])) {
+          if (p[k] < tMin) tMin = p[k];
+          if (p[k] > tMax) tMax = p[k];
+        }
+      });
+    });
+    if (tMin > tMax) { tMin = 60; tMax = 90; }
+    else { tMin = Math.floor(tMin - 4); tMax = Math.ceil(tMax + 4); }
     drawSeries("aq-chart-temp", [
-      { key: "pool", min: 45, max: 110, color: "#0ea5e9" },
-      { key: "spa", min: 45, max: 110, color: "#f97316" },
-      { key: "air", min: 45, max: 110, color: "#94a3b8" },
+      { key: "pool", min: tMin, max: tMax, color: "#0ea5e9" },
+      { key: "spa", min: tMin, max: tMax, color: "#f97316" },
+      { key: "air", min: tMin, max: tMax, color: "#94a3b8" },
     ], "aq-tr-temp-meta");
     drawSeries("aq-chart-pump", [
       { key: "w", min: 0, max: 2500, color: "#22c55e" },

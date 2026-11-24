@@ -42,6 +42,8 @@ class JandyAqualink : public Component {
   void set_salt_chlorinator_output_sensor(sensor::Sensor *s) { salt_chlorinator_output_sensor_ = s; }
   void set_ph_sensor(sensor::Sensor *s) { ph_sensor_ = s; }
   void set_orp_sensor(sensor::Sensor *s) { orp_sensor_ = s; }
+  void set_ph_offset(float offset) { ph_offset_ = offset; }
+  void set_orp_offset(int offset) { orp_offset_ = offset; }
   void set_salt_chlorinator_status_ts(text_sensor::TextSensor *s) { salt_chlorinator_status_ts_ = s; }
   void set_salt_chlorinator_generating_bs(binary_sensor::BinarySensor *b) { salt_chlorinator_generating_bs_ = b; }
   void set_spa_mode_bs(binary_sensor::BinarySensor *b) { spa_mode_bs_ = b; }
@@ -306,6 +308,8 @@ class JandyAqualink : public Component {
   volatile int swg_ppm_{-1}, swg_percent_{-1}, swg_status_{-1};
   volatile float ph_{-1.0f};
   volatile int orp_{-1};
+  float ph_offset_{0.0f};
+  int orp_offset_{0};
   volatile bool iaq_return_home_{false};       // after a STATUS read, return to HOME
   int pub_air_{-1000}, pub_pool_{-1000}, pub_spa_{-1000};
   int pub_rpm_{-1000}, pub_watts_{-1000};

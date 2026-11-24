@@ -1682,10 +1682,10 @@ void JandyAqualink::observe_frame(const jandy::Frame &f) {
     uint32_t now_ms = millis();
     portENTER_CRITICAL(&mux_);
     if (chemistry.has_ph) {
-      ph_ = chemistry.ph;
+      ph_ = chemistry.ph + ph_offset_;
       last_ph_ms_ = now_ms;
     }
-    if (chemistry.has_orp) orp_ = chemistry.orp;
+    if (chemistry.has_orp) orp_ = chemistry.orp + orp_offset_;
     portEXIT_CRITICAL(&mux_);
   }
 

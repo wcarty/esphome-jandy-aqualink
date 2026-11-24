@@ -32,6 +32,8 @@ CONF_SALT_CHLORINATOR_STATUS = "salt_chlorinator_status"
 CONF_SALT_CHLORINATOR_GENERATING = "salt_chlorinator_generating"
 CONF_PH = "ph"
 CONF_ORP = "orp"
+CONF_PH_OFFSET = "ph_offset"
+CONF_ORP_OFFSET = "orp_offset"
 CONF_SPA_MODE = "spa_mode"
 CONF_AIR_BLOWER = "air_blower"
 CONF_FILTER_PUMP_STATE = "filter_pump_state"
@@ -67,6 +69,8 @@ CONFIG_SCHEMA = cv.Schema(
         cv.Optional(CONF_FLOW_CONTROL_PIN): cv.int_,
         cv.Optional(CONF_BAUD, default=9600): cv.positive_int,
         cv.Optional(CONF_KEYPAD_ADDRESS, default=0x08): cv.int_range(min=0, max=255),
+        cv.Optional(CONF_PH_OFFSET, default=0.0): cv.float_,
+        cv.Optional(CONF_ORP_OFFSET, default=0): cv.int_,
         cv.Optional(CONF_POLLS_ANSWERED): sensor.sensor_schema(
             accuracy_decimals=0,
             state_class=STATE_CLASS_TOTAL_INCREASING,
@@ -187,6 +191,8 @@ async def to_code(config):
         cg.add(var.set_flow_control_pin(config[CONF_FLOW_CONTROL_PIN]))
     cg.add(var.set_baud(config[CONF_BAUD]))
     cg.add(var.set_keypad_address(config[CONF_KEYPAD_ADDRESS]))
+    cg.add(var.set_ph_offset(config[CONF_PH_OFFSET]))
+    cg.add(var.set_orp_offset(config[CONF_ORP_OFFSET]))
 
     if CONF_POLLS_ANSWERED in config:
         s = await sensor.new_sensor(config[CONF_POLLS_ANSWERED])

@@ -68,6 +68,8 @@ jandy_aqualink:
   flow_control_pin: 21
   baud_rate: 9600
   keypad_address: 0x09
+  ph_offset: 0.5
+  orp_offset: 138
   acid_dosing_enabled: true
   aux6_status_byte: 2
   aux6_status_bit: 6
