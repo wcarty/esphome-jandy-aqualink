@@ -21,11 +21,11 @@ logger:
 
 api:
   encryption:
-    key: !secret api_encryption_key
+    key: !secret pool_bridge_api_key
 
 ota:
   - platform: esphome
-    password: !secret ota_password
+    password: !secret pool_bridge_ota_password
 
 wifi:
   ssid: !secret wifi_ssid
@@ -42,7 +42,7 @@ web_server:
   js_include: pool-dashboard.js
 
 external_components:
-  - source: github://wcarty/esphome-jandy-aqualink@master
+  - source: github://wcarty/esphome-jandy-aqualink
     components: [jandy_aqualink]
     refresh: 0s
 
