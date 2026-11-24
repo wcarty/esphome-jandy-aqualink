@@ -192,14 +192,20 @@ It must also be unused by another live iAqualink controller.
 
 ## 🧭 Commercial SCADA Web Dashboard
 
+![AquaLink RS-8 Pro SCADA Web Dashboard](docs/images/scada-web-dashboard.jpg)
+
 `firmware/pool-dashboard.css` and `firmware/pool-dashboard.js` provide a commercial-style
 SCADA web UI served directly by the ESP32 (`web_server: version: 3`), featuring:
 
 - **Top Status Bar:** Live `POOL MODE` / `SPA MODE` badge, RS485 bus error count, master interlock status, and a built-in **Show Live Logs** console drawer.
-- **Interactive Arc Gauges:** Live Pool Heating (`45–90 °F`), Spa Heating (`80–104 °F`), and Salt Chlorinator (`0–100%`) gauges with `−`/`+`/slider controls.
+- **Interactive Arc Gauges:** Live Pool Heating (`45–90 °F`), Spa Heating (`80–104 °F`), and Salt Chlorinator (`0–100%`, with **BOOST** / Super Chlorinate toggle) gauges with `−`/`+`/slider controls.
 - **Water Chemistry & Local Acid Dosing:** Live pH, ORP, Salt ppm, SWG output/generating status, local ESP32 acid dosing controller state, **Auto Dosing** toggle, and **E-STOP**.
 - **Equipment Control Deck:** All 10 equipment & heater switches (including real hardware state feedback for Filter Pump, Spa Mode, Spa Booster, Air Blower, Pool Light, Spillover Waterfall, and Acid Dosing) plus one-tap **Spa Night** and **All Off** scenes.
 - **24-Hour Live Trends:** Inline SVG trend charts (pH & ORP, Pool/Spa/Air Temps, Pump Watts & RPM) persisted in browser `localStorage`.
+
+### Home Assistant Dashboard Example
+
+![Home Assistant Pool & Spa Dashboard](docs/images/ha-pool-dashboard.jpg)
 
 ### Option A — 100% Offline (Recommended)
 Copy `firmware/pool-dashboard.css` and `firmware/pool-dashboard.js` into `/config/esphome/` and embed them directly in ESP32 flash so the dashboard works even during an internet outage:

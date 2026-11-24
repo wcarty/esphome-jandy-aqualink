@@ -1,681 +1,322 @@
-# Start here: this is a complete ESPHome example for a Jandy AquaLink RS bridge
-# on an M5Stack Atom Lite with the ATOM RS485 base. Fill in the secrets, confirm
-# the GPIO pins match your hardware, then compile and flash. The master control
-# interlock starts OFF, so the bridge begins in a safe monitoring-only state.
+# Complete example ESPHome configuration for Waveshare ESP32-S3-RS485-CAN
+# wired directly to a Jandy AquaLink RS-8 Combo Pool & Spa panel.
+#
+# Hardware: https://www.waveshare.com/esp32-s3-rs485-can.htm
+# Wiring:   A+ (Black) and B- (Yellow) only (isolated RS485 transceiver)
+#
+# Offline SCADA dashboard: copy firmware/pool-dashboard.css and
+# firmware/pool-dashboard.js into /config/esphome/ (or use jsDelivr CDN URLs).
 
 esphome:
-  name: pool-bridge
-  friendly_name: Pool RS485 Bridge
+  name: poolbridge
+  friendly_name: PoolBridge
 
 esp32:
-  board: m5stack-atom
+  board: esp32-s3-devkitc-1
   framework:
     type: esp-idf
+
+logger:
+  level: INFO
+
+api:
+  encryption:
+    key: !secret api_encryption_key
+
+ota:
+  - platform: esphome
+    password: !secret ota_password
 
 wifi:
   ssid: !secret wifi_ssid
   password: !secret wifi_password
-  # Uncomment to assign a static IP instead of using DHCP:
-  # manual_ip:
-  #   static_ip: 192.168.4.51
-  #   gateway: 192.168.4.1
-  #   subnet: 255.255.255.0
   ap:
-    ssid: "Pool Bridge Fallback"
-    password: !secret ap_fallback_password
+    ssid: "Poolbridge Fallback Hotspot"
 
-# Serves an AP and recovers if WiFi fails.
-captive_portal:
-
-# Boot-loop recovery: after repeated fast reboots, fall back to a minimal
-# wifi+ota+api image so a bad firmware can always be re-flashed over the air.
-safe_mode:
-
-api:
-  encryption:
-    key: !secret pool_bridge_api_key
-
-ota:
-  - platform: esphome
-    password: !secret pool_bridge_ota_password
-
-logger:
-  baud_rate: 115200  # enables USB/serial console logging alongside network logs
-  task_log_buffer_size: 4096  # the core-1 task logs a multi-line bus census in bursts
-
-# Local device UI for monitoring and control when Home Assistant is unavailable.
-# Add both values to secrets.yaml. Authentication is mandatory because this page
-# can operate pool equipment once the master interlock is enabled.
 web_server:
+  port: 80
   version: 3
+  css_url: ""
+  js_url: ""
   css_include: pool-dashboard.css
   js_include: pool-dashboard.js
-  auth:
-    username: !secret pool_bridge_web_username
-    password: !secret pool_bridge_web_password
-  sorting_groups:
-    - id: pool_overview
-      name: Pool Overview
-      sorting_weight: 10
-    - id: pool_chemistry
-      name: Water Chemistry
-      sorting_weight: 20
-    - id: pool_equipment
-      name: Equipment Status
-      sorting_weight: 30
-    - id: pool_automation
-      name: Automation & Controls
-      sorting_weight: 40
-    - id: pool_diagnostics
-      name: Diagnostics
-      sorting_weight: 90
 
 external_components:
-  # Fetches the latest component from this repository on each compile.
-  - source: github://wcarty/esphome-jandy-aqualink
+  - source: github://wcarty/esphome-jandy-aqualink@master
+    components: [jandy_aqualink]
     refresh: 0s
 
-# The Jandy keypad-presence component. Owns the RS485 UART directly and replies
-# to polls for `keypad_address` with the inert AllButton ACK (no key), which
-# registers an emulated keypad on the panel without actuating any equipment.
-# v1 publishes presence-health diagnostics; reading temperatures needs the
-# keypad navigation layer (a later phase, see docs/).
+time:
+  - platform: homeassistant
+    id: ha_time
+    on_time:
+      # Auto-sync Jandy clock daily at 3:05 AM (handles DST & drift)
+      - seconds: 0
+        minutes: 5
+        hours: 3
+        then:
+          - lambda: |-
+              auto now = id(ha_time).now();
+              if (now.is_valid()) {
+                id(jandy_comp).sync_time(now.year, now.month, now.day_of_month, now.hour, now.minute);
+              }
+
 jandy_aqualink:
   id: jandy_comp
-  tx_pin: 19
-  rx_pin: 22
-  # flow_control_pin: 21  # Optional: DE/RE pin for transceivers without auto-direction (e.g., Waveshare ESP32-S3-RS485-CAN)
+  tx_pin: 17
+  rx_pin: 18
+  flow_control_pin: 21
   baud_rate: 9600
-  keypad_address: 0x08   # a free AllButton keypad slot (0x08-0x0B); see README
-  polls_answered:
-    name: Pool Keypad Polls Answered
-    web_server:
-      sorting_group_id: pool_diagnostics
-  reply_latency:
-    name: Pool Keypad Reply Latency
-    web_server:
-      sorting_group_id: pool_diagnostics
-  checksum_errors:
-    name: Pool Bus Checksum Errors
-    web_server:
-      sorting_group_id: pool_diagnostics
-  # Temperatures decoded from the iAqualink home page (needs the iAqualink
-  # Presence switch on). Pool vs spa depends on the panel's current valve mode.
-  air_temp:
-    name: Pool Air Temp
-    web_server:
-      sorting_group_id: pool_overview
-  pool_temp:
-    name: Pool Water Temp
-    web_server:
-      sorting_group_id: pool_overview
-  spa_temp:
-    name: Spa Water Temp
-    web_server:
-      sorting_group_id: pool_overview
-  # Pump RPM/watts, read from the iAqualink STATUS page on demand (see the Read
-  # Pump Speed button). The panel shows either temps or pump speed at a time, so
-  # this updates when the Status page is viewed, not continuously.
-  pump_rpm:
-    name: Pool Pump Speed
-    web_server:
-      sorting_group_id: pool_overview
-  pump_watts:
-    name: Pool Pump Watts
-    web_server:
-      sorting_group_id: pool_overview
-  # AquaPure salt-water chlorinator readings are passively decoded from its
-  # normal RS485 poll/reply traffic. They work without iAqualink presence and
-  # do not send any chlorinator command.
-  salt_level:
-    name: Pool Salt Level
-    web_server:
-      sorting_group_id: pool_chemistry
-  salt_chlorinator_output:
-    name: Pool Chlorinator Output
-    web_server:
-      sorting_group_id: pool_chemistry
-  salt_chlorinator_status:
-    name: Pool Chlorinator Status
-    web_server:
-      sorting_group_id: pool_chemistry
-  salt_chlorinator_generating:
-    name: Pool Chlorinator Generating
-    web_server:
-      sorting_group_id: pool_chemistry
-  # Jandy TrueSense chemistry readings, passively decoded from its normal
-  # RS485 chemistry frames. No chemistry-control command is sent.
-  ph:
-    name: Pool pH
-    web_server:
-      sorting_group_id: pool_chemistry
-  orp:
-    name: Pool ORP
-    web_server:
-      sorting_group_id: pool_chemistry
-  # Equipment on/off decoded from the panel's keypad status bitmap (the inert
-  # AllButton seat, address 0x08). Read-only; updates continuously as the panel
-  # changes equipment. Bit positions pinned live 2026-06-01 (see docs/).
-  spa_mode:
-    name: Pool Spa Mode
-    web_server:
-      sorting_group_id: pool_equipment
-  air_blower:
-    name: Pool Air Blower (status)
-    web_server:
-      sorting_group_id: pool_equipment
-  filter_pump_state:
-    name: Pool Filter Pump (status)
-    web_server:
-      sorting_group_id: pool_equipment
-  cleaner_state:
-    name: Pool Cleaner (status)
-    web_server:
-      sorting_group_id: pool_equipment
-  # Heater on/off, decoded from the HOME-page heater button states (Session 9:
-  # state 3 = enabled). Read-only; updates from the HOME enumeration plus deltas.
-  pool_heat_enabled:
-    name: Pool Heat (enabled)
-    web_server:
-      sorting_group_id: pool_equipment
-  spa_heat_enabled:
-    name: Spa Heat (enabled)
-    web_server:
-      sorting_group_id: pool_equipment
-  # Local ESP32 acid dosing controller (disabled by default until AUX6 bit is pinned)
-  acid_dosing_enabled: false
-  # aux6_status_byte: 0
-  # aux6_status_bit: 0
-  acid_target_ph: 7.6
-  acid_dose_seconds: 120
-  acid_cooldown_seconds: 3600
-  acid_max_daily_seconds: 900
-  acid_dosing_state:
-    name: Pool Acid Dosing Status
-    web_server:
-      sorting_group_id: pool_chemistry
-  acid_dosing_status:
-    name: Pool Acid Controller State
-    web_server:
-      sorting_group_id: pool_chemistry
+  keypad_address: 0x09
+  acid_dosing_enabled: true
+  aux6_status_byte: 2
+  aux6_status_bit: 6
 
-# --- Phase 2 gated keypress controls ---
-# Reading temperatures needs the panel to redraw its display, which it only does
-# in response to a keypad button press. These controls send ONE display-only
-# navigation key at a time, gated behind a master safety switch.
-#
-# Safety model:
-#   - The switch defaults OFF and boots OFF (restore_mode ALWAYS_OFF). With it
-#     off, the firmware is exactly v1: inert presence, no key ever sent.
-#   - A button only arms a key when the switch is on; otherwise it is refused
-#     and logged. Turning the switch off is the hard abort (clears any armed
-#     key and reverts to inert).
-#   - Only the five display-only nav keys are exposed. Equipment keys (pump,
-#     spa, heaters, aux, override, hold) are not reachable, and the component
-#     refuses any key outside its navigation allowlist.
+  pool_temp:
+    name: "Pool Water Temp"
+  spa_temp:
+    name: "Spa Water Temp"
+  air_temp:
+    name: "Pool Air Temp"
+  pump_rpm:
+    name: "Pool Pump Speed"
+  pump_watts:
+    name: "Pool Pump Watts"
+  ph:
+    name: "Pool pH"
+  orp:
+    name: "Pool ORP"
+  salt_level:
+    name: "Pool Salt Level"
+  salt_chlorinator_output:
+    name: "Pool Salt Chlorinator Output"
+  salt_chlorinator_generating:
+    name: "Pool Salt Chlorinator Generating"
+  salt_chlorinator_status:
+    name: "Pool Salt Chlorinator Status"
+  spa_mode:
+    name: "Pool Spa Mode Status"
+  filter_pump_state:
+    name: "Pool Filter Pump Status"
+  air_blower:
+    name: "Pool Air Blower Status"
+  booster_pump_state:
+    name: "Spa Booster Pump Status"
+  spillover_state:
+    name: "Pool Spillover Status"
+  cleaner_state:
+    name: "Pool Light Status"
+  acid_dosing_state:
+    name: "Pool Acid Dosing Status"
+  acid_dosing_status:
+    name: "Pool Acid Controller State"
+  checksum_errors:
+    name: "Pool Bus Checksum Errors"
+  polls_answered:
+    name: "Pool Keypad Polls Answered"
+  reply_latency:
+    name: "Pool Keypad Reply Latency"
+
 switch:
   - platform: template
-    name: "Pool Keypad Keypress Armed"
-    id: keypad_interlock
-    icon: "mdi:gesture-tap-button"
+    name: "Pool Master Control Interlock"
+    id: pool_interlock
+    restore_mode: RESTORE_DEFAULT_ON
     optimistic: true
-    restore_mode: ALWAYS_OFF
-    web_server:
-      sorting_group_id: pool_automation
     turn_on_action:
       - lambda: "id(jandy_comp).set_interlock(true);"
     turn_off_action:
       - lambda: "id(jandy_comp).set_interlock(false);"
 
-  # Read-only: when on, also emulate the iAqualink controller (0x33) so the panel
-  # pushes its display pages (which carry the temperatures). Sends only inert
-  # ACKs, never a key, so it cannot actuate equipment. Off by default.
-  - platform: template
-    name: "iAqualink Presence"
-    id: iaq_presence
-    icon: "mdi:thermometer-lines"
-    optimistic: true
-    restore_mode: RESTORE_DEFAULT_OFF   # was ALWAYS_OFF; temps keep reading after a reboot
-    web_server:
-      sorting_group_id: pool_automation
-    turn_on_action:
-      - lambda: "id(jandy_comp).set_iaq_presence(true);"
-    turn_off_action:
-      - lambda: "id(jandy_comp).set_iaq_presence(false);"
-
-  # Auto-refresh driver: when on, a 15-min interval reads the pump speed so HA
-  # history captures the panel's stored schedule. View-only; off by default.
-  - platform: template
-    name: "Pool Pump Auto-Refresh"
-    id: pump_autorefresh
-    icon: "mdi:timer-refresh"
-    optimistic: true
-    restore_mode: RESTORE_DEFAULT_OFF   # resumes the watch after an overnight reboot
-    web_server:
-      sorting_group_id: pool_automation
-
-  # Promiscuous bus capture: when on, log every non-poll frame on the bus raw, so
-  # we can record how a real iAqualink reads/writes the panel's schedule. Read-only
-  # (logs only, transmits nothing). Off by default; it is verbose, so use it only
-  # during a capture window then turn it off.
-  - platform: template
-    name: "Pool Bus Sniff"
-    id: bus_sniff
-    icon: "mdi:ear-hearing"
-    optimistic: true
-    restore_mode: ALWAYS_OFF
-    turn_on_action:
-      - lambda: "id(jandy_comp).set_sniff_all(true);"
-    turn_off_action:
-      - lambda: "id(jandy_comp).set_sniff_all(false);"
-
-  # Scheduler permission: when on, the autonomous HA pool brain may set pump speed
-  # and toggle Filter Pump (0x11) / Cleaner (0x15) WITHOUT the master interlock.
-  # Scoped to exactly those writes in firmware (is_scheduler_safe_key); every other
-  # write still needs the interlock. It boots OFF, preserving a monitor-only start.
-  - platform: template
-    name: "Pool Scheduler"
-    id: scheduler_armed
-    icon: "mdi:robot"
-    optimistic: true
-    restore_mode: ALWAYS_OFF
-    web_server:
-      sorting_group_id: pool_automation
-    turn_on_action:
-      - lambda: "id(jandy_comp).set_scheduler_armed(true);"
-    turn_off_action:
-      - lambda: "id(jandy_comp).set_scheduler_armed(false);"
-
-  # These mirror confirmed panel state. A requested state only presses a panel
-  # toggle when needed, preventing a repeated tap from inverting a circuit.
-  - platform: template
-    name: "Pool / Spa Mode"
-    id: pool_spa_mode_control
-    icon: "mdi:hot-tub"
-    lambda: "return id(jandy_comp).spa_mode_on();"
-    turn_on_action:
-      - lambda: "id(jandy_comp).set_spa_mode(true);"
-    turn_off_action:
-      - lambda: "id(jandy_comp).set_spa_mode(false);"
-    web_server:
-      sorting_group_id: pool_automation
-  - platform: template
-    name: "Filter Pump"
-    id: filter_pump_control
-    icon: "mdi:pump"
-    lambda: "return id(jandy_comp).filter_pump_on();"
-    turn_on_action:
-      - lambda: "id(jandy_comp).set_filter_pump(true);"
-    turn_off_action:
-      - lambda: "id(jandy_comp).set_filter_pump(false);"
-    web_server:
-      sorting_group_id: pool_automation
-  - platform: template
-    name: "Cleaner"
-    id: cleaner_control
-    icon: "mdi:robot-vacuum"
-    lambda: "return id(jandy_comp).cleaner_on();"
-    turn_on_action:
-      - lambda: "id(jandy_comp).set_cleaner(true);"
-    turn_off_action:
-      - lambda: "id(jandy_comp).set_cleaner(false);"
-    web_server:
-      sorting_group_id: pool_automation
-  - platform: template
-    name: "Air Blower"
-    id: air_blower_control
-    icon: "mdi:weather-windy"
-    lambda: "return id(jandy_comp).air_blower_on();"
-    turn_on_action:
-      - lambda: "id(jandy_comp).set_air_blower(true);"
-    turn_off_action:
-      - lambda: "id(jandy_comp).set_air_blower(false);"
-    web_server:
-      sorting_group_id: pool_automation
-  - platform: template
-    name: "Pool Heat"
-    id: pool_heat_control
-    icon: "mdi:radiator"
-    lambda: "return id(jandy_comp).pool_heat_on();"
-    turn_on_action:
-      - lambda: "id(jandy_comp).set_pool_heat(true);"
-    turn_off_action:
-      - lambda: "id(jandy_comp).set_pool_heat(false);"
-    web_server:
-      sorting_group_id: pool_automation
-  - platform: template
-    name: "Spa Heat"
-    id: spa_heat_control
-    icon: "mdi:fire"
-    lambda: "return id(jandy_comp).spa_heat_on();"
-    turn_on_action:
-      - lambda: "id(jandy_comp).set_spa_heat(true);"
-    turn_off_action:
-      - lambda: "id(jandy_comp).set_spa_heat(false);"
-    web_server:
-      sorting_group_id: pool_automation
-
-  # AUX6 is a latching relay for the Stenner. The panel does not expose its
-  # state in a frame decoded by this bridge, so this shows the last state
-  # commanded here. DISABLED prevents the switch from sending a relay toggle
-  # when the bridge boots.
-  - platform: template
-    name: "Pool Stenner Dosing Pump"
-    id: stenner_dosing_pump
-    icon: "mdi:pump"
-    optimistic: true
-    restore_mode: DISABLED
-    turn_on_action:
-      - lambda: "id(jandy_comp).press_aux6();"
-    turn_off_action:
-      - lambda: "id(jandy_comp).press_aux6();"
-    web_server:
-      sorting_group_id: pool_automation
-
   - platform: template
     name: "Pool Acid Auto Dosing"
     id: pool_acid_auto
-    icon: "mdi:flask-round-bottom"
-    lambda: "return id(jandy_comp).acid_auto_enabled();"
+    restore_mode: RESTORE_DEFAULT_ON
+    optimistic: true
     turn_on_action:
       - lambda: "id(jandy_comp).set_acid_auto_enabled(true);"
     turn_off_action:
       - lambda: "id(jandy_comp).set_acid_auto_enabled(false);"
-    web_server:
-      sorting_group_id: pool_automation
 
-  # AUX2 changes the color wheel circuit but its relay state is not decoded.
-  # This command-state switch is boot-inert, like the Stenner switch above.
+  - platform: template
+    name: "Pool Filter Pump"
+    id: pool_filter_pump
+    lambda: "return id(jandy_comp).filter_pump_on();"
+    turn_on_action:
+      - lambda: "if (!id(jandy_comp).filter_pump_on()) id(jandy_comp).arm_key(0x02);"
+    turn_off_action:
+      - lambda: "if (id(jandy_comp).filter_pump_on()) id(jandy_comp).arm_key(0x02);"
+
+  - platform: template
+    name: "Pool Spa Mode"
+    id: pool_spa_mode
+    lambda: "return id(jandy_comp).spa_mode_on();"
+    turn_on_action:
+      - lambda: "if (!id(jandy_comp).spa_mode_on()) id(jandy_comp).arm_key(0x01);"
+    turn_off_action:
+      - lambda: "if (id(jandy_comp).spa_mode_on()) id(jandy_comp).arm_key(0x01);"
+
+  - platform: template
+    name: "Pool Heater"
+    id: pool_heater
+    restore_mode: ALWAYS_OFF
+    optimistic: true
+    turn_on_action:
+      - lambda: "id(jandy_comp).arm_key(0x12);"
+    turn_off_action:
+      - lambda: "id(jandy_comp).arm_key(0x12);"
+
+  - platform: template
+    name: "Spa Heater"
+    id: spa_heater
+    restore_mode: ALWAYS_OFF
+    optimistic: true
+    turn_on_action:
+      - lambda: "id(jandy_comp).arm_key(0x17);"
+    turn_off_action:
+      - lambda: "id(jandy_comp).arm_key(0x17);"
+
+  - platform: template
+    name: "Spa Booster Pump"
+    id: spa_booster_pump
+    lambda: "return id(jandy_comp).booster_pump_on();"
+    turn_on_action:
+      - lambda: "if (!id(jandy_comp).booster_pump_on()) id(jandy_comp).arm_key(0x06);"
+    turn_off_action:
+      - lambda: "if (id(jandy_comp).booster_pump_on()) id(jandy_comp).arm_key(0x06);"
+
+  - platform: template
+    name: "Pool Air Blower"
+    id: pool_air_blower
+    lambda: "return id(jandy_comp).air_blower_on();"
+    turn_on_action:
+      - lambda: "if (!id(jandy_comp).air_blower_on()) id(jandy_comp).arm_key(0x0B);"
+    turn_off_action:
+      - lambda: "if (id(jandy_comp).air_blower_on()) id(jandy_comp).arm_key(0x0B);"
+
+  - platform: template
+    name: "Pool Light"
+    id: pool_light
+    lambda: "return id(jandy_comp).cleaner_on();"
+    turn_on_action:
+      - lambda: "if (!id(jandy_comp).cleaner_on()) id(jandy_comp).arm_key(0x05);"
+    turn_off_action:
+      - lambda: "if (id(jandy_comp).cleaner_on()) id(jandy_comp).arm_key(0x05);"
+
   - platform: template
     name: "Pool Color Wheel"
     id: pool_color_wheel
-    icon: "mdi:palette"
+    restore_mode: ALWAYS_OFF
     optimistic: true
-    restore_mode: DISABLED
     turn_on_action:
-      - lambda: "id(jandy_comp).press_aux2();"
+      - lambda: "id(jandy_comp).arm_key(0x0A);"
     turn_off_action:
-      - lambda: "id(jandy_comp).press_aux2();"
-    web_server:
-      sorting_group_id: pool_automation
+      - lambda: "id(jandy_comp).arm_key(0x0A);"
 
   - platform: template
     name: "Pool Spillover Waterfall"
     id: pool_spillover_waterfall
-    icon: "mdi:waterfall"
+    lambda: "return id(jandy_comp).spillover_on();"
+    turn_on_action:
+      - lambda: "if (!id(jandy_comp).spillover_on()) id(jandy_comp).arm_key(0x0F);"
+    turn_off_action:
+      - lambda: "if (id(jandy_comp).spillover_on()) id(jandy_comp).arm_key(0x0F);"
+
+  - platform: template
+    name: "Pool Acid Dosing"
+    id: pool_acid_dosing
+    lambda: "return id(jandy_comp).acid_dosing_on();"
+    turn_on_action:
+      - lambda: "if (!id(jandy_comp).acid_dosing_on()) id(jandy_comp).arm_key(0x10);"
+    turn_off_action:
+      - lambda: "if (id(jandy_comp).acid_dosing_on()) id(jandy_comp).arm_key(0x10);"
+
+  - platform: template
+    name: "Pool Super Chlorinate"
+    id: pool_super_chlorinate
+    icon: "mdi:flash-alert"
+    restore_mode: ALWAYS_OFF
     optimistic: true
-    restore_mode: DISABLED
     turn_on_action:
-      - lambda: "id(jandy_comp).press_aux3();"
+      - lambda: "id(jandy_comp).set_swg_boost(true);"
     turn_off_action:
-      - lambda: "id(jandy_comp).press_aux3();"
-    web_server:
-      sorting_group_id: pool_automation
+      - lambda: "id(jandy_comp).set_swg_boost(false);"
 
-  - platform: template
-    name: "Pool Light"
-    id: pool_light_control
-    icon: "mdi:lightbulb"
-    lambda: "return id(jandy_comp).pool_light_on();"
-    turn_on_action:
-      - lambda: "id(jandy_comp).set_pool_light(true);"
-    turn_off_action:
-      - lambda: "id(jandy_comp).set_pool_light(false);"
-    web_server:
-      sorting_group_id: pool_automation
-
-button:
-  # Remote reboot. NOT PRESENT ON THE DEVICE AS OF 2026-09-05, which is why the
-  # only recovery from the long-uptime wedge is a physical trip to the pad.
-  #
-  # The wedge: after about 35 days the bridge stops accepting NEW API
-  # connections while its existing one keeps working. Nothing looks wrong until
-  # something drops that connection, and then neither Home Assistant nor
-  # esphome logs can reconnect (EncryptionHelloAPIError, "connection dropped
-  # immediately after encrypted hello"). The api reboot_timeout, 15 min by
-  # default, does NOT catch it. See automation "Pool: Bridge Uptime High".
-  #
-  # entity_category diagnostic keeps it out of the main dashboard so nobody
-  # reboots the pool controller by fat-fingering a card.
-  - platform: restart
-    name: "Restart Bridge"
-    icon: "mdi:restart"
-    entity_category: diagnostic
-
-  - platform: template
-    name: "Pool Keypad Press MENU"
-    icon: "mdi:menu"
-    on_press:
-      - lambda: "id(jandy_comp).arm_key(0x09);"   # KEY_MENU
-  - platform: template
-    name: "Pool Keypad Press RIGHT"
-    icon: "mdi:arrow-right-bold"
-    on_press:
-      - lambda: "id(jandy_comp).arm_key(0x18);"   # KEY_RIGHT
-  - platform: template
-    name: "Pool Keypad Press LEFT"
-    icon: "mdi:arrow-left-bold"
-    on_press:
-      - lambda: "id(jandy_comp).arm_key(0x13);"   # KEY_LEFT
-  - platform: template
-    name: "Pool Keypad Press ENTER"
-    icon: "mdi:keyboard-return"
-    on_press:
-      - lambda: "id(jandy_comp).arm_key(0x1D);"   # KEY_ENTER
-  - platform: template
-    name: "Pool Keypad Press CANCEL"
-    icon: "mdi:close-octagon"
-    on_press:
-      - lambda: "id(jandy_comp).arm_key(0x0E);"   # KEY_CANCEL
-
-  # Direct AllButton circuit keys from AquaLinkD. Both require the same master
-  # interlock as every other write; AUX6's DLE keycode is safely byte-stuffed.
-  # These circuits do not expose reliable state feedback, so they remain
-  # one-shot controls instead of showing a potentially incorrect ON/OFF state.
-
-  # DEVICES-page toggles (gated by interlock + iAqualink presence + the
-  # device-toggle allowlist; each navigates to DEVICES and confirms the page
-  # before pressing one keycode). Labels confirmed by the live test 2026-06-02:
-  # slot 12 turned out to be the Solar Light. Spa Light's fixture is currently
-  # unplugged (command confirmed correct on the bus, no light), and Sprinklers is
-  # a legacy pool-cooling circuit whose controller was removed (command confirmed,
-  # nothing wired). All three send correctly and are kept for future reconnection.
-  - platform: template
-    name: "Spa Light"
-    icon: "mdi:lightbulb-night"
-    on_press:
-      - lambda: "id(jandy_comp).press_device_toggle(0x19);"   # DEVICES slot 8 = Spa Light (fixture unplugged 2026-06-02)
-  - platform: template
-    name: "Solar Light"
-    icon: "mdi:outdoor-lamp"
-    on_press:
-      - lambda: "id(jandy_comp).press_device_toggle(0x1D);"   # DEVICES slot 12 = Solar Light (was "Extra Aux"; confirmed live 2026-06-02)
-  - platform: template
-    name: "Sprinklers"
-    icon: "mdi:sprinkler"
-    on_press:
-      - lambda: "id(jandy_comp).press_device_toggle(0x1E);"   # DEVICES slot 13 = Sprinklers (legacy pool-cooling, controller removed)
-
-  # SURVEY (Phase 2 setpoint route discovery; gated + one-shot + page-confirmed).
-  # Navigate first (Other Devices -> DEVICES, or Menu -> MENU), confirm the page in
-  # the log, then press the matching survey button and watch for IAQ PAGE SET_TEMP(0x39).
-  - platform: template
-    name: "Survey: Pool Heat on DEVICES"
-    icon: "mdi:magnify"
-    on_press:
-      - lambda: "id(jandy_comp).survey_press(0x14, 0x36);"   # DEVICES Pool Heat -> SET_TEMP?
-  - platform: template
-    name: "Survey: Spa Heat on DEVICES"
-    icon: "mdi:magnify"
-    on_press:
-      - lambda: "id(jandy_comp).survey_press(0x15, 0x36);"   # DEVICES Spa Heat -> SET_TEMP?
-  - platform: template
-    name: "Survey: Set Temp on MENU"
-    icon: "mdi:magnify"
-    on_press:
-      - lambda: "id(jandy_comp).survey_press(0x14, 0x0F);"   # MENU Set Temp (KEY04) -> SET_TEMP?
-
-  # --- Survey navigation (read-only). Gated by the master interlock + iAqualink
-  # presence. Each sends ONE global page-movement key; none can actuate equipment.
-  # Temporary survey instruments; the useful ones stay, the rest get removed after.
-  - platform: template
-    name: "iAq Nav Home"
-    icon: "mdi:home"
-    on_press:
-      - lambda: "id(jandy_comp).iaq_nav(0x01);"
-  - platform: template
-    name: "iAq Nav Other Devices"
-    icon: "mdi:format-list-bulleted"
-    on_press:
-      - lambda: "id(jandy_comp).iaq_nav(0x18);"   # only honored from the HOME page
-  - platform: template
-    name: "iAq Nav Status"
-    icon: "mdi:gauge"
-    on_press:
-      - lambda: "id(jandy_comp).iaq_nav(0x06);"
-  - platform: template
-    name: "iAq Nav Menu"
-    icon: "mdi:menu"
-    on_press:
-      - lambda: "id(jandy_comp).iaq_nav(0x02);"
-  - platform: template
-    name: "iAq Nav Back"
-    icon: "mdi:arrow-left"
-    on_press:
-      - lambda: "id(jandy_comp).iaq_nav(0x05);"
-  - platform: template
-    name: "iAq Nav Next Page"
-    icon: "mdi:chevron-right"
-    on_press:
-      - lambda: "id(jandy_comp).iaq_nav(0x21);"
-  - platform: template
-    name: "iAq Nav Prev Page"
-    icon: "mdi:chevron-left"
-    on_press:
-      - lambda: "id(jandy_comp).iaq_nav(0x20);"
-
-  # Read the live pump speed: briefly view the STATUS page (RPM/watts), then auto-
-  # return to HOME so temperatures keep updating. Gated by the interlock + presence.
-  - platform: template
-    name: "Read Pump Speed"
-    icon: "mdi:pump"
-    on_press:
-      - lambda: "id(jandy_comp).read_pump_speed();"
-
-  # --- Pump speed presets (gated by interlock + iAqualink presence). Each starts
-  # the page-confirmed value-set sequence, then reads the new RPM back. The two
-  # low values are tuned at the pad against the salt cell flow cutoff. ---
-  - platform: template
-    name: "Pump Speed: Night"
-    icon: "mdi:weather-night"
-    on_press:
-      - lambda: "id(jandy_comp).set_pump_rpm(1100);"   # quiet overnight circulation, below salt floor by design (live-confirmed 2026-05-31)
-  - platform: template
-    name: "Pump Speed: Low"
-    icon: "mdi:speedometer-slow"
-    on_press:
-      - lambda: "id(jandy_comp).set_pump_rpm(2000);"   # salt flow floor ~1850 (live-tuned 2026-05-31) + 150 cushion
-  - platform: template
-    name: "Pump Speed: Normal"
-    icon: "mdi:speedometer-medium"
-    on_press:
-      - lambda: "id(jandy_comp).set_pump_rpm(2750);"
-  - platform: template
-    name: "Pump Speed: High"
-    icon: "mdi:speedometer"
-    on_press:
-      - lambda: "id(jandy_comp).set_pump_rpm(3200);"
-
-# Pump speed slider. Inert unless the interlock is armed (set_pump_rpm refuses
-# otherwise), same as the buttons. Snaps to 5 RPM; the component re-clamps to
-# 600-3450 regardless.
 number:
-  - platform: template
-    name: "Pump Speed Set"
-    id: pump_speed_set
-    icon: "mdi:speedometer"
-    unit_of_measurement: "RPM"
-    min_value: 600
-    max_value: 3450
-    step: 5
-    mode: slider
-    optimistic: true
-    web_server:
-      sorting_group_id: pool_automation
-    set_action:
-      - lambda: "id(jandy_comp).set_pump_rpm((uint16_t) x);"
-  # Heater temperature setpoints (Phase 2). Each starts the page-confirmed sequence
-  # (HOME -> DEVICES -> heat item -> SET_TEMP -> 0x80 -> 0x24 value -> HOME); the
-  # 0x24 value frame is sent ONLY on SET_TEMP. Gated by interlock + presence. Pool
-  # 45-90, spa 80-104 (clamped in firmware). mode: box so it does not actuate while
-  # dragging a slider; the write fires once on entry.
   - platform: template
     name: "Pool Heat Setpoint"
     id: pool_heat_setpoint
-    icon: "mdi:radiator"
+    icon: "mdi:pool-thermometer"
     unit_of_measurement: "°F"
+    mode: slider
     min_value: 45
     max_value: 90
     step: 1
-    mode: box
+    initial_value: 82
+    restore_value: true
     optimistic: true
-    web_server:
-      sorting_group_id: pool_automation
     set_action:
       - lambda: "id(jandy_comp).set_heater_setpoint(false, (uint16_t) x);"
+
   - platform: template
     name: "Spa Heat Setpoint"
     id: spa_heat_setpoint
     icon: "mdi:hot-tub"
     unit_of_measurement: "°F"
+    mode: slider
     min_value: 80
     max_value: 104
     step: 1
-    mode: box
+    initial_value: 102
+    restore_value: true
     optimistic: true
-    web_server:
-      sorting_group_id: pool_automation
     set_action:
       - lambda: "id(jandy_comp).set_heater_setpoint(true, (uint16_t) x);"
-  # AquaPure pool output. The page-confirmed write requires both iAqualink
-  # Presence and the master interlock; use box mode to avoid writes while dragging.
+
   - platform: template
-    name: "Pool Chlorinator Output"
-    id: pool_chlorinator_output
-    icon: "mdi:water-check"
+    name: "Pool Pump Speed Setpoint"
+    id: pool_pump_speed_setpoint
+    icon: "mdi:speedometer"
+    unit_of_measurement: "RPM"
+    mode: slider
+    min_value: 600
+    max_value: 3450
+    step: 50
+    initial_value: 2500
+    restore_value: true
+    optimistic: true
+    set_action:
+      - lambda: "id(jandy_comp).set_pump_rpm((uint16_t) x);"
+
+  - platform: template
+    name: "Pool Salt Chlorinator Setpoint"
+    id: pool_swg_setpoint
+    icon: "mdi:percent"
     unit_of_measurement: "%"
+    mode: slider
     min_value: 0
     max_value: 100
-    step: 1
-    mode: box
+    step: 5
+    initial_value: 50
+    restore_value: true
     optimistic: true
-    web_server:
-      sorting_group_id: pool_automation
     set_action:
-      - lambda: "id(jandy_comp).set_swg_percent((uint16_t) x);"
+      - lambda: "id(jandy_comp).set_swg_percent((uint8_t) x);"
 
-# When Auto-Refresh is on AND iAqualink presence is on, read the pump speed every
-# 15 minutes. read_pump_speed() is view-only (STATUS then auto-HOME); it actuates
-# nothing. The presence check here only avoids a REFUSED log when presence is off.
-interval:
-  - interval: 15min
-    then:
+button:
+  - platform: template
+    name: "Pool Acid Emergency Stop"
+    id: pool_acid_estop
+    on_press:
+      - lambda: "id(jandy_comp).acid_emergency_stop();"
+
+  - platform: template
+    name: "Sync Jandy Clock"
+    id: sync_jandy_clock
+    icon: "mdi:clock-sync"
+    on_press:
       - lambda: |-
-          if (id(pump_autorefresh).state && id(iaq_presence).state) {
-            id(jandy_comp).read_pump_speed();
+          auto now = id(ha_time).now();
+          if (now.is_valid()) {
+            id(jandy_comp).sync_time(now.year, now.month, now.day_of_month, now.hour, now.minute);
           }
-
-# Diagnostics (unchanged from the bridge build).
-sensor:
-  - platform: wifi_signal
-    name: Pool Bridge WiFi RSSI
-    update_interval: 60s
-  - platform: uptime
-    name: Pool Bridge Uptime
-  - platform: internal_temperature
-    name: Pool Bridge Internal Temp
-    update_interval: 60s
-
-binary_sensor:
-  - platform: status
-    name: Pool Bridge Status
