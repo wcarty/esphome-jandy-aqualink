@@ -385,6 +385,20 @@
     if (!isNaN(swgNum)) {
       setArc("aq-arc-salt", swgNum / 100);
     }
+    const syncSlider = (slId, lblId, prefix, suffix, numKey, fallbackNum) => {
+      const v = num(numKey);
+      const valNum = !isNaN(v) ? v : fallbackNum;
+      if (valNum !== null && !isNaN(valNum)) {
+        const sl = el(slId);
+        if (sl && document.activeElement !== sl) {
+          sl.value = String(Math.round(valNum));
+          el(lblId).textContent = `${prefix}${Math.round(valNum)}${suffix}`;
+        }
+      }
+    };
+    syncSlider("aq-sl-pool", "aq-g-pool-set-lbl", "TARGET: ", "°F", "number-pool_heat_setpoint", null);
+    syncSlider("aq-sl-spa", "aq-g-spa-set-lbl", "TARGET: ", "°F", "number-spa_heat_setpoint", null);
+    syncSlider("aq-sl-salt", "aq-g-salt-set-lbl", "Target: ", "%", "number-pool_salt_chlorinator_setpoint", swgNum);
 
     const gen = val("binary_sensor-pool_salt_chlorinator_generating");
     if (gen) {
