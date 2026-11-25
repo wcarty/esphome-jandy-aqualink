@@ -156,7 +156,7 @@ void ChemistryReader::feed(const Frame &f) {
       if (probe == 0x01 && counts > 0 && counts <= 4095) {
         float v = (static_cast<float>(counts) / 4095.0f) * 3.3f;
         float v_elec_mv = (v - 1.650f) * 1000.0f / 12.745f;
-        float ph = 7.0f + (v_elec_mv / 59.16f);  // 25°C Nernst slope
+        float ph = 7.0f - (v_elec_mv / 59.16f);  // 25°C Nernst slope (acidic = +mV, alkaline = -mV)
         if (ph >= 5.0f && ph <= 10.0f) {
           state.ph = ph;
           state.has_ph = true;
