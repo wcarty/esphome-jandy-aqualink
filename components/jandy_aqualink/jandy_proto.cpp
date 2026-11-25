@@ -156,13 +156,13 @@ void ChemistryReader::feed(const Frame &f) {
       if (probe == 0x01 && counts > 0 && counts <= 4095) {
         float v = (static_cast<float>(counts) / 4095.0f) * 3.3f;
         float v_elec_mv = (v - 1.650f) * 1000.0f / 12.745f;
-        float ph = 7.0f - (v_elec_mv / 59.16f);  // 25°C Nernst slope (acidic = +mV, alkaline = -mV)
+        float ph = 7.722f - 2.222f * (v_elec_mv / 59.16f);  // 2-point calibrated TrueSense pH curve
         if (ph >= 5.0f && ph <= 10.0f) {
           state.ph = ph;
           state.has_ph = true;
         }
       } else if (probe == 0x02 && counts > 0 && counts <= 4095) {
-        int orp = static_cast<int>(-1909.25f + 0.93294f * static_cast<float>(counts) + 0.5f);
+        int orp = static_cast<int>(60.3f + 0.2570f * static_cast<float>(counts) + 0.5f);
         if (orp >= 100 && orp <= 1200) {
           state.orp = orp;
           state.has_orp = true;
