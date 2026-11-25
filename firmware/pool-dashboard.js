@@ -202,7 +202,11 @@
         <div class="aq-card">
           <div class="aq-section-title">
             <span>Equipment Control Deck</span>
-            <div style="display:flex;gap:8px;align-items:center">
+            <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
+              <button id="aq-spd-eco" class="aq-btn-ghost">Eco 1500</button>
+              <button id="aq-spd-skim" class="aq-btn-ghost">Skim 2500</button>
+              <button id="aq-spd-spa" class="aq-btn-ghost">Spa 3200</button>
+              <button id="aq-scene-spa-2h" class="aq-btn-ghost" style="border-color:rgba(249,115,22,.6);color:#fdba74">Heat Spa 2h</button>
               <button id="aq-scene-spa-night" class="aq-btn-ghost" style="border-color:rgba(249,115,22,.6);color:#fdba74">Spa Night</button>
               <button id="aq-scene-all-off" class="aq-btn-ghost">All Off</button>
               <span id="aq-polls" class="aq-kpi-meta" style="margin:0">Polls: 0</span>
@@ -285,6 +289,10 @@
         setTimeout(() => postAction("switch", name, action), idx * 750);
       });
     };
+    el("aq-spd-eco").onclick = () => postAction("number", "Pool Pump Speed Setpoint", "set", "value=1500");
+    el("aq-spd-skim").onclick = () => postAction("number", "Pool Pump Speed Setpoint", "set", "value=2500");
+    el("aq-spd-spa").onclick = () => postAction("number", "Pool Pump Speed Setpoint", "set", "value=3200");
+    el("aq-scene-spa-2h").onclick = () => postAction("button", "Heat Spa for 2 Hours", "press");
     el("aq-scene-spa-night").onclick = () =>
       runSeq(["Pool Spa Mode", "Spa Heater", "Spa Booster Pump", "Pool Air Blower", "Pool Light"], "turn_on");
     el("aq-scene-all-off").onclick = () =>

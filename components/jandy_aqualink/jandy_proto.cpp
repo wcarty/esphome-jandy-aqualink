@@ -74,6 +74,9 @@ KeypadStatus decode_keypad_status(const Frame &f) {
   s.booster_pump = status_bit(f, 2, 0);
   s.spillover = status_bit(f, 0, 4);
   s.pool_light = status_bit(f, 1, 0);
+  // Pool Heater (LED index 15 -> byte 3 bits 6/7) & Spa Heater (LED index 17 -> byte 4 bits 2/3)
+  s.pool_heater = status_bit(f, 3, 6) || status_bit(f, 3, 7);
+  s.spa_heater = status_bit(f, 4, 2) || status_bit(f, 4, 3);
   return s;
 }
 

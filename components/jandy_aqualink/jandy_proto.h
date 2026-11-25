@@ -240,7 +240,8 @@ struct Decoded {
 struct KeypadStatus {
   bool valid = false;
   bool air_blower = false, cleaner = false, spa_mode = false, filter_pump = false,
-       booster_pump = false, pool_light = false, spillover = false;
+       booster_pump = false, pool_light = false, spillover = false,
+       pool_heater = false, spa_heater = false;
 };
 KeypadStatus decode_keypad_status(const Frame &f);
 

@@ -71,6 +71,9 @@ jandy_aqualink:
   ph_offset: 0.0
   orp_offset: 0
   acid_dosing_enabled: true
+  acid_target_ph: 7.5
+  freeze_protection_enabled: true
+  freeze_protection_temp_f: 36
   aux6_status_byte: 2
   aux6_status_bit: 6
 
@@ -161,22 +164,20 @@ switch:
   - platform: template
     name: "Pool Heater"
     id: pool_heater
-    restore_mode: ALWAYS_OFF
-    optimistic: true
+    lambda: "return id(jandy_comp).pool_heat_on();"
     turn_on_action:
-      - lambda: "id(jandy_comp).arm_key(0x12);"
+      - lambda: "if (!id(jandy_comp).pool_heat_on()) id(jandy_comp).arm_key(0x12);"
     turn_off_action:
-      - lambda: "id(jandy_comp).arm_key(0x12);"
+      - lambda: "if (id(jandy_comp).pool_heat_on()) id(jandy_comp).arm_key(0x12);"
 
   - platform: template
     name: "Spa Heater"
     id: spa_heater
-    restore_mode: ALWAYS_OFF
-    optimistic: true
+    lambda: "return id(jandy_comp).spa_heat_on();"
     turn_on_action:
-      - lambda: "id(jandy_comp).arm_key(0x17);"
+      - lambda: "if (!id(jandy_comp).spa_heat_on()) id(jandy_comp).arm_key(0x17);"
     turn_off_action:
-      - lambda: "id(jandy_comp).arm_key(0x17);"
+      - lambda: "if (id(jandy_comp).spa_heat_on()) id(jandy_comp).arm_key(0x17);"
 
   - platform: template
     name: "Spa Booster Pump"
@@ -315,10 +316,38 @@ button:
   - platform: template
     name: "Sync Jandy Clock"
     id: sync_jandy_clock
-    icon: "mdi:clock-sync"
+    icon: "mdi:clock-check-outline"
     on_press:
       - lambda: |-
           auto now = id(ha_time).now();
           if (now.is_valid()) {
             id(jandy_comp).sync_time(now.year, now.month, now.day_of_month, now.hour, now.minute);
           }
+
+  - platform: template
+    name: "Heat Spa for 2 Hours"
+    id: heat_spa_2h
+    icon: "mdi:hot-tub"
+    on_press:
+      - lambda: "id(jandy_comp).start_spa_timer(120);"
+
+  - platform: template
+    name: "Pump Preset Eco (1500 RPM)"
+    id: pump_preset_eco
+    icon: "mdi:leaf"
+    on_press:
+      - lambda: "id(jandy_comp).set_pump_rpm(1500);"
+
+  - platform: template
+    name: "Pump Preset Skim (2500 RPM)"
+    id: pump_preset_skim
+    icon: "mdi:waves"
+    on_press:
+      - lambda: "id(jandy_comp).set_pump_rpm(2500);"
+
+  - platform: template
+    name: "Pump Preset Spa (3200 RPM)"
+    id: pump_preset_spa
+    icon: "mdi:speedometer"
+    on_press:
+      - lambda: "id(jandy_comp).set_pump_rpm(3200);"

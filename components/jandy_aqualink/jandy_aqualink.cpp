@@ -971,6 +971,27 @@ void JandyAqualink::set_swg_boost(bool on) {
   start_allbutton_menu_(6, on ? 1 : 0);
 }
 
+void JandyAqualink::start_spa_timer(uint16_t minutes) {
+  if (!interlock_) {
+    ESP_LOGW(TAG, "start_spa_timer REFUSED: safety interlock is OFF");
+    return;
+  }
+  if (minutes == 0) minutes = 120;
+  uint32_t now = millis();
+  spa_timer_end_ms_ = now + static_cast<uint32_t>(minutes) * 60000UL;
+  spa_timer_off_at_ms_ = 0;
+  if (!spa_mode_on()) arm_key(jandy::KEY_SPA);
+  spa_timer_heat_at_ms_ = now + 1500;
+  ESP_LOGW(TAG, "Spa timer started: %u minutes (auto-shutoff armed)", static_cast<unsigned>(minutes));
+}
+
+void JandyAqualink::cancel_spa_timer() {
+  spa_timer_end_ms_ = 0;
+  spa_timer_heat_at_ms_ = 0;
+  spa_timer_off_at_ms_ = 0;
+  ESP_LOGW(TAG, "Spa timer cancelled");
+}
+
 void JandyAqualink::sync_time(uint16_t year, uint8_t month, uint8_t day, uint8_t hour24, uint8_t minute) {
   if (!interlock_) {
     ESP_LOGW(TAG, "sync_time REFUSED: safety interlock is OFF");
@@ -1756,7 +1777,8 @@ void JandyAqualink::observe_frame(const jandy::Frame &f) {
     jandy::KeypadStatus ks = jandy::decode_keypad_status(f);
     if (ks.valid) {
       int8_t spa = ks.spa_mode, blow = ks.air_blower, pump = ks.filter_pump, clean = ks.cleaner,
-             boost = ks.booster_pump, light = ks.pool_light, spill = ks.spillover;
+             boost = ks.booster_pump, light = ks.pool_light, spill = ks.spillover,
+             phtr = ks.pool_heater, shtr = ks.spa_heater;
       int8_t aux6 = -1;
       if (aux6_status_byte_ >= 0) {
         aux6 = (f.data_len() > static_cast<size_t>(aux6_status_byte_) &&
@@ -1784,6 +1806,8 @@ void JandyAqualink::observe_frame(const jandy::Frame &f) {
       cs_booster_ = boost;
       cs_spillover_ = spill;
       home_pool_light_ = light;
+      he_pool_ = phtr;
+      he_spa_ = shtr;
       portEXIT_CRITICAL(&mux_);
       if (spa_ch) ESP_LOGW(TAG, "STATUS CHANGE: spa_mode -> %d", spa);
       if (blow_ch) ESP_LOGW(TAG, "STATUS CHANGE: air_blower -> %d", blow);
@@ -1983,6 +2007,43 @@ void JandyAqualink::loop() {
       pub_cs_aux6_ = aux6_s;
     }
     run_acid_controller_(millis(), pump_s, aux6_s, swg_percent, swg_status, ph, ph_ms);
+
+    // Local Freeze Protection Watchdog: if air_temp <= threshold (default 36F),
+    // flag freeze_protect_bs_ and force Filter Pump ON when interlock is enabled.
+    uint32_t now_ms = millis();
+    if (freeze_protect_enabled_ && air > 0) {
+      bool freeze = pub_freeze_protect_ ? (air < freeze_protect_temp_f_ + 2)
+                                        : (air <= freeze_protect_temp_f_);
+      if (freeze_protect_bs_ && freeze != pub_freeze_protect_) {
+        freeze_protect_bs_->publish_state(freeze);
+      }
+      pub_freeze_protect_ = freeze;
+      if (freeze && interlock_ && pump_s == 0 && (now_ms - last_freeze_pump_ms_ >= 30000)) {
+        last_freeze_pump_ms_ = now_ms;
+        arm_key(jandy::KEY_PUMP);
+        ESP_LOGW(TAG, "FREEZE PROTECTION: air=%dF <= %dF -> forcing Filter Pump ON",
+                 air, freeze_protect_temp_f_);
+      }
+    }
+
+    // Timed Spa Mode (e.g. Heat Spa for 2 Hours -> auto shutoff after 5m cooldown)
+    if (spa_timer_heat_at_ms_ != 0 && now_ms >= spa_timer_heat_at_ms_) {
+      spa_timer_heat_at_ms_ = 0;
+      if (!spa_heat_on()) arm_key(jandy::KEY_SPA_HTR);
+    }
+    if (spa_timer_end_ms_ != 0 && now_ms >= spa_timer_end_ms_) {
+      spa_timer_end_ms_ = 0;
+      bool heat_was_on = spa_heat_on();
+      if (heat_was_on) arm_key(jandy::KEY_SPA_HTR);
+      spa_timer_off_at_ms_ = now_ms + (heat_was_on ? 315000UL : 1500UL);
+      ESP_LOGW(TAG, "Spa timer expired -> turning Spa Heater OFF (Spa Mode off in %us)",
+               heat_was_on ? 315u : 2u);
+    }
+    if (spa_timer_off_at_ms_ != 0 && now_ms >= spa_timer_off_at_ms_) {
+      spa_timer_off_at_ms_ = 0;
+      if (spa_mode_on()) arm_key(jandy::KEY_SPA);
+      ESP_LOGW(TAG, "Spa timer complete -> turning Spa Mode OFF");
+    }
     int8_t he_p, he_s;
     portENTER_CRITICAL(&mux_);
     he_p = he_pool_;

@@ -54,6 +54,11 @@ class JandyAqualink : public Component {
   void set_spillover_bs(binary_sensor::BinarySensor *b) { spillover_bs_ = b; }
   void set_pool_heat_bs(binary_sensor::BinarySensor *b) { pool_heat_bs_ = b; }
   void set_spa_heat_bs(binary_sensor::BinarySensor *b) { spa_heat_bs_ = b; }
+  void set_freeze_protect_bs(binary_sensor::BinarySensor *b) { freeze_protect_bs_ = b; }
+  void set_freeze_protect_enabled(bool en) { freeze_protect_enabled_ = en; }
+  void set_freeze_protect_temp_f(int t) { freeze_protect_temp_f_ = t; }
+  void start_spa_timer(uint16_t minutes);
+  void cancel_spa_timer();
   void set_aux6_status_pos(int byte_i, int bit_i) {
     aux6_status_byte_ = byte_i;
     aux6_status_bit_ = bit_i;
@@ -233,6 +238,14 @@ class JandyAqualink : public Component {
   binary_sensor::BinarySensor *spillover_bs_{nullptr};
   binary_sensor::BinarySensor *pool_heat_bs_{nullptr};
   binary_sensor::BinarySensor *spa_heat_bs_{nullptr};
+  binary_sensor::BinarySensor *freeze_protect_bs_{nullptr};
+  bool freeze_protect_enabled_{true};
+  int freeze_protect_temp_f_{36};
+  bool pub_freeze_protect_{false};
+  uint32_t last_freeze_pump_ms_{0};
+  uint32_t spa_timer_end_ms_{0};
+  uint32_t spa_timer_heat_at_ms_{0};
+  uint32_t spa_timer_off_at_ms_{0};
   binary_sensor::BinarySensor *acid_dosing_bs_{nullptr};
   text_sensor::TextSensor *acid_dosing_status_ts_{nullptr};
   int aux6_status_byte_{-1};

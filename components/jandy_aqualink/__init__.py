@@ -51,6 +51,9 @@ CONF_ACID_TARGET_PH = "acid_target_ph"
 CONF_ACID_DOSE_SECONDS = "acid_dose_seconds"
 CONF_ACID_COOLDOWN_SECONDS = "acid_cooldown_seconds"
 CONF_ACID_MAX_DAILY_SECONDS = "acid_max_daily_seconds"
+CONF_FREEZE_PROTECTION_ENABLED = "freeze_protection_enabled"
+CONF_FREEZE_PROTECTION_TEMP_F = "freeze_protection_temp_f"
+CONF_FREEZE_PROTECTION_ACTIVE = "freeze_protection_active"
 
 
 def _temp_sensor():
@@ -177,6 +180,12 @@ CONFIG_SCHEMA = cv.Schema(
         cv.Optional(CONF_ACID_DOSE_SECONDS, default=120): cv.int_range(min=10, max=360),
         cv.Optional(CONF_ACID_COOLDOWN_SECONDS, default=3600): cv.int_range(min=300, max=14400),
         cv.Optional(CONF_ACID_MAX_DAILY_SECONDS, default=900): cv.int_range(min=60, max=3600),
+        cv.Optional(CONF_FREEZE_PROTECTION_ENABLED, default=True): cv.boolean,
+        cv.Optional(CONF_FREEZE_PROTECTION_TEMP_F, default=36): cv.int_range(min=32, max=45),
+        cv.Optional(CONF_FREEZE_PROTECTION_ACTIVE): binary_sensor.binary_sensor_schema(
+            device_class="cold",
+            icon="mdi:snowflake-alert",
+        ),
     }
 ).extend(cv.COMPONENT_SCHEMA)
 
@@ -276,3 +285,8 @@ async def to_code(config):
     ))
     if config[CONF_ACID_DOSING_ENABLED]:
         cg.add(var.set_acid_auto_enabled(True))
+    cg.add(var.set_freeze_protect_enabled(config[CONF_FREEZE_PROTECTION_ENABLED]))
+    cg.add(var.set_freeze_protect_temp_f(config[CONF_FREEZE_PROTECTION_TEMP_F]))
+    if CONF_FREEZE_PROTECTION_ACTIVE in config:
+        b = await binary_sensor.new_binary_sensor(config[CONF_FREEZE_PROTECTION_ACTIVE])
+        cg.add(var.set_freeze_protect_bs(b))
