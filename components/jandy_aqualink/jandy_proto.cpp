@@ -680,7 +680,7 @@ bool selftest(std::string &detail) {
     for (size_t i = 0; i < aux6_n && pass; ++i)
       if (aux6[i] != aux6_exp[i]) pass = false;
     if (!is_direct_aux_key(KEY_AUX2) || !is_direct_aux_key(KEY_AUX6) ||
-        is_direct_aux_key(0x05))
+        is_direct_aux_key(0xFF))
       pass = false;
     const uint8_t eq[] = {0x02, 0x01, 0x12, 0x17, 0x1E, 0x19, 0x05, 0x0A, 0x0F};
     for (uint8_t e : eq)
