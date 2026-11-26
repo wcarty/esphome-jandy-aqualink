@@ -1,8 +1,5 @@
 // Standalone C++17 unit tests for components/jandy_aqualink/jandy_proto.{h,cpp}.
-// Compiled and run directly in CI with:
-//   g++ -std=c++17 -Wall -Wextra -Werror -Icomponents/jandy_aqualink \
-//       tests/cpp/test_jandy_proto.cpp components/jandy_aqualink/jandy_proto.cpp \
-//       -o test_jandy_proto && ./test_jandy_proto
+// Compiled and run directly in CI with g++ -std=c++17 -Wall -Wextra -Werror.
 
 #include "jandy_proto.h"
 
